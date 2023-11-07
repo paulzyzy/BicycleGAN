@@ -14,8 +14,6 @@ import time
 import pdb
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
-print(torch.__version__)
-print(torch.cuda.is_available())
 
 # Create a summary writer
 writer = SummaryWriter('runs/bicyclegan_experiment_1')
@@ -24,10 +22,11 @@ cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Training Configurations 
 # (You may put your needed configuration here. Please feel free to add more or use argparse. )
-img_dir = '/home/zlz/BicycleGAN/datasets/edges2shoes/train/'
+train_img_dir = './edges2shoes/train/'
 checkpoints_dir = '/Users/zy/Desktop/bicyclegan/checkpoints'
 os.makedirs(checkpoints_dir, exist_ok=True)
 
+dataset_name = "edges2shoes" 
 img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
 num_epochs =  10
 batch_size = 2
@@ -67,9 +66,20 @@ def Denormalize(tensor):
 torch.manual_seed(1); np.random.seed(1)
 
 # Define DataLoader
-dataset = Edge2Shoe(img_dir)
-loader = data.DataLoader(dataset, batch_size=batch_size)
-print('The number of training images = %d' % len(dataset))
+# dataloader = DataLoader(
+#     ImageDataset("../../data/%s" % dataset_name, img_shape),
+#     batch_size=batch_size,
+#     shuffle=True,
+#     num_workers=1,
+# )
+# val_dataloader = DataLoader(
+#     ImageDataset("../../data/%s" % dataset_name, img_shape, mode="val"),
+#     batch_size=8,
+#     shuffle=True,
+#     num_workers=1,
+# )
+train_dataset = Edge2Shoe(train_img_dir)
+train_loader = data.DataLoader(train_dataset, batch_size=batch_size)
 
 # Loss functions
 mae_loss = torch.nn.L1Loss().to(device)
@@ -91,8 +101,6 @@ optimizer_D_LR = torch.optim.Adam(D_LR.parameters(), lr=lr_rate, betas=(betas,0.
 Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
 # For adversarial loss (optional to use)
-valid = 1; fake = 0
-
 criterion_GAN = torch.nn.MSELoss().to(device)
 criterion_pixel = torch.nn.L1Loss().to(device)
 criterion_latent = torch.nn.L1Loss().to(device)
@@ -101,26 +109,20 @@ criterion_kl = torch.nn.KLDivLoss().to(device)
 # Initialize a counter for the total number of iterations
 global_step = 0
 # Training
-total_steps = len(loader)*num_epochs; step = 0
+total_steps = len(train_loader)*num_epochs; step = 0
+
 for e in range(num_epochs):
 	start = time.time()
-	for idx, data in enumerate(loader):
+	for idx, data in enumerate(train_loader):
 		loss_G = 0; loss_D_VAE = 0; loss_D_LR = 0
-		# Log losses to TensorBoard
-		writer.add_scalar('Loss/G', loss_G.item(), global_step=global_step)
-		writer.add_scalar('Loss/D_VAE', loss_D_VAE.item(), global_step=global_step)
-		writer.add_scalar('Loss/D_LR', loss_D_LR.item(), global_step=global_step)
 
         # Increment the global step counter
 		global_step += 1
 
 		########## Process Inputs ##########
 		edge_tensor, rgb_tensor = data
-		edge_tensor, rgb_tensor = norm(edge_tensor).to(device), norm(rgb_tensor).to(device)
+		edge_tensor, rgb_tensor = Normalize(edge_tensor).to(device), Normalize(rgb_tensor).to(device)
 		real_A = edge_tensor;real_B = rgb_tensor
-		
-		valid = Variable(Tensor(np.ones((real_A.size(0), *D_VAE.output_shape))), requires_grad=False)
-		fake = Variable(Tensor(np.zeros((real_A.size(0), *D_VAE.output_shape))), requires_grad=False)
 
 		b_size = real_B.size(0)
 		noise = torch.randn(b_size, latent_dim, 1, 1, device=device)
@@ -137,10 +139,10 @@ for e in range(num_epochs):
 		kl_loss = criterion_kl(z,noise)
 
 		#generator loss for VAE-GAN
-		loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, valid, criterion_GAN)
+		loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, criterion_GAN)
 
 		#generator loss for LR-GAN
-		loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, z, D_LR, valid, criterion_GAN)
+		loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, z, D_LR, criterion_GAN)
 
 
         #l1 loss between generated image and real image
@@ -163,7 +165,7 @@ for e in range(num_epochs):
 		D_VAE.train()
 		optimizer_D_VAE.zero_grad()
 		#loss for D_VAE
-		loss_D_VAE = loss_discriminator(D_VAE, real_B, generator, noise, valid, fake, criterion_GAN)
+		loss_D_VAE = loss_discriminator(D_VAE, real_A, real_B, generator, noise, criterion_GAN)
 		loss_D_VAE.backward()
 		optimizer_D_VAE.step()
 
@@ -173,18 +175,23 @@ for e in range(num_epochs):
 		D_LR.train()
 		optimizer_D_LR.zero_grad()
 		#loss for D_LR
-		loss_D_LR = loss_discriminator(D_LR, real_B, generator, noise, valid, fake, criterion_GAN)
+		loss_D_LR = loss_discriminator(D_LR, real_A, real_B, generator, noise, criterion_GAN)
 		loss_D_LR.backward()
 		optimizer_D_LR.step()
+
+		# Log losses to TensorBoard
+		writer.add_scalar('Loss/G', loss_G.item(), global_step=global_step)
+		writer.add_scalar('Loss/D_VAE', loss_D_VAE.item(), global_step=global_step)
+		writer.add_scalar('Loss/D_LR', loss_D_LR.item(), global_step=global_step)
 
 		""" Optional TODO: 
 			1. You may want to visualize results during training for debugging purpose
 			2. Save your model every few iterations
 		"""
 		if idx % 10 == 0:  # visualize every 10 batches
-			visualize_images(denorm(fake_B_VAE.detach()).cpu(), 'Generated Images VAE')
-			visualize_images(denorm(fake_B_LR.detach()).cpu(), 'Generated Images LR')
-			visualize_images(denorm(real_B.detach()).cpu(), 'Real Images')
+			visualize_images(Denormalize(fake_B_VAE.detach()).cpu(), 'Generated Images VAE')
+			visualize_images(Denormalize(fake_B_LR.detach()).cpu(), 'Generated Images LR')
+			visualize_images(Denormalize(real_B.detach()).cpu(), 'Real Images')
 
 		if idx % 100 == 0:  # save every 100 batches
 			torch.save(generator.state_dict(), os.path.join(checkpoints_dir, f'generator_epoch{e}_batch{idx}.pth'))

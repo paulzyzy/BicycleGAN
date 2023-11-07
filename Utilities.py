@@ -5,6 +5,15 @@ import functools
 from torch.optim import lr_scheduler
 import matplotlib.pyplot as plt
 import torchvision
+from PIL import Image
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+import torchvision.transforms as transforms
+import numpy as np
+import os
+import sys
+import glob
+
 
 def visualize_images(images, title):
     grid_img = torchvision.utils.make_grid(images, nrow=8)
@@ -91,11 +100,14 @@ def loss_image(real_A, real_B, z, G, criterion_pixel):
 
 def loss_latent(noise, real_A, E, G, criterion_latent):
     fake = G(real_A, noise)
-    encoded_z = E(fake)
+    # encoded_z = E(fake)
+    encoded_z_tuple = E(fake)
+    encoded_z = encoded_z_tuple[0]
+    encoded_z = encoded_z.squeeze() # squeeze the dimension of 1
     loss_latent = criterion_latent(encoded_z, noise)
     return loss_latent
 
-def loss_discriminator(D, real_A, real_B, G, noise, Valid_label, Fake_label, criterion):
+def loss_discriminator(D, real_A, real_B, G, noise, criterion):
     '''
     1. Forward real images into the discriminator
     2. Compute loss between Valid_label and dicriminator output on real images
@@ -105,25 +117,27 @@ def loss_discriminator(D, real_A, real_B, G, noise, Valid_label, Fake_label, cri
     6. sum real loss and fake loss as the loss_D
     7. we also need to output fake images generate by G(noise) for loss_generator computation
     '''
-    Valid_label = Valid_label * 0.9
-    Fake_label = Fake_label + 0.1
+    
+    
     real_output = D(real_B)
     real_output = real_output.squeeze()
-    real_loss = criterion(real_output, Valid_label)
+    valid_label = torch.ones_like(real_output, requires_grad=False)
+    real_loss = criterion(real_output, valid_label)
     fake = G(real_A, noise)
     fake_output = D(fake.detach())
     fake_output = fake_output.squeeze()
-    fake_loss = criterion(fake_output, Fake_label)
+    fake_label = torch.zeros_like(fake_output, requires_grad=False)
+    fake_loss = criterion(fake_output, fake_label)
     loss_D = real_loss + fake_loss
     # return total loss_D
     return loss_D
 
-def loss_generator(G, real, z, D, valid, criterion_GAN):
+def loss_generator(G, real, z, D, criterion_GAN):
     '''
     loss_generator function is applied to compute loss for both generator G_AB and G_BA:
     For example, we want to compute the loss for G_AB.
     real2G will be the real image in domain A, then we map real2G into domain B to get fake B,
-    then we compute the loss between D_B(fake_B) and valid, which is all 1.
+    then we compute the loss between D_B(fake_B) and valid, which is 1.
     The fake_B image will also be one of the outputs, since we want to use it in the loss_cycle_consis.
     '''
 
@@ -132,7 +146,7 @@ def loss_generator(G, real, z, D, valid, criterion_GAN):
 
     # Forward the generated fake images through the corresponding discriminator D
     fake_pred = D(fake)
-
+    valid = torch.ones_like(fake_pred, requires_grad=False)
     # Compute loss between the discriminator's predictions on the fake images and valid labels (which are all 1s)
     loss_G = criterion_GAN(fake_pred, valid)
 
