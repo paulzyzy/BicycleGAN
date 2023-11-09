@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 import torch
 import glob
-import pdb
+#import pdb
 
 class Edge2Shoe(data.Dataset):
 	""" Dataloader for Edge2Shoe datasets 
@@ -21,7 +21,7 @@ class Edge2Shoe(data.Dataset):
 		
 	def __getitem__(self, index):
 		image = Image.open(self.image_list[index]).resize((256,128), resample=Image.BILINEAR)
-		image = np.asarray(image).transpose(2,0,1)
+		image = np.asarray(image).transpose(2,0,1).copy()
 		image_tensor = torch.from_numpy(image).float()
 		edge_tensor = image_tensor[:,:,:128]; rgb_tensor = image_tensor[:,:,128:]
 		return edge_tensor, rgb_tensor

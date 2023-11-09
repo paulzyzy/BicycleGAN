@@ -1,0 +1,9 @@
+checkpoints/
+runs/
+edges2shoes
+__pycache__
+inference_results
+*.zip
+*.png
+*.jpg
+

@@ -8,10 +8,10 @@ from datasets import *
 from models import *
 from Utilities import *
 import argparse, os
-import itertools
+#import itertools
 import torch
 import time
-import pdb
+#import pdb
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 
@@ -169,7 +169,7 @@ for e in range(num_epochs):
 			1. You may want to visualize results during training for debugging purpose
 			2. Save your model every few iterations
 		"""
-		save_path='/Users/zy/Desktop/bicyclegan/image_results'
+		save_path='/home/eddieshen/CIS680/final/BicycleGAN/image_results/'
 		if idx % 1000 == 0:  # visualize every 1000 batches
 			visualize_images(
     			Denormalize(fake_B_VAE.detach()).cpu(), 

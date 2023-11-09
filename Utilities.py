@@ -17,7 +17,7 @@ def Normalize(image):
 def Denormalize(tensor):
 	return ((tensor+1.0)/2.0)*255.0
 
-def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir):
+def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir,title):
     """
     Visualizes the inference by saving side-by-side images of input and output.
 
@@ -30,8 +30,17 @@ def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir):
     """
     image_path = os.path.join(save_dir, f"{prefix}_style{style_num}_image{image_num}.png")
     # Convert the tensor to PIL image for saving
-    pil_image = F.to_pil_image(denorm_tensor)
-    pil_image.save(image_path)
+    image = denorm_tensor.permute(1, 2, 0).numpy()
+    image = np.clip(image, 0, 255).astype(np.uint8)
+    # pil_image = F.to_pil_image(denorm_tensor)
+    # pil_image.save(image_path)
+    plt.imshow(image)
+    plt.title(title)
+    plt.axis('off')
+    
+    # Save the figure
+    plt.savefig(image_path)
+    plt.close()  # Close the figure to avoid display
 
 def visualize_images(image, title, epoch, idx, save_path):
     # Create a grid with 2 images per row for each pair of real and generated images
