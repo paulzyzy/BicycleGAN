@@ -23,7 +23,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Training Configurations 
 # (You may put your needed configuration here. Please feel free to add more or use argparse. )
 train_img_dir = './edges2shoes/train/'
-checkpoints_dir = '/Users/zy/Desktop/bicyclegan/checkpoints'
+checkpoints_dir = './checkpoints'
 os.makedirs(checkpoints_dir, exist_ok=True)
 
 dataset_name = "edges2shoes" 
