@@ -29,7 +29,7 @@ os.makedirs(checkpoints_dir, exist_ok=True)
 dataset_name = "edges2shoes" 
 img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
 num_epochs =  10
-batch_size = 2
+batch_size = 8
 lr_rate = 0.0002 	      # Adam optimizer learning rate
 betas = 0.5		  # Adam optimizer beta 1, beta 2
 lambda_pixel = 10       # Loss weights for pixel loss
@@ -50,34 +50,10 @@ upsample='bilinear'
 num_generator_filters = 64
 output_nc=3	
 
-# Normalize image tensor
-def Normalize(image):
-	return (image/255.0-0.5)*2.0
-
-# Denormalize image tensor
-def Denormalize(tensor):
-	return ((tensor+1.0)/2.0)*255.0
-
-# Reparameterization helper function 
-# (You may need this helper function here or inside models.py, depending on your encoder implementation)
-
-
 # Random seeds (optional)
 torch.manual_seed(1); np.random.seed(1)
 
-# Define DataLoader
-# dataloader = DataLoader(
-#     ImageDataset("../../data/%s" % dataset_name, img_shape),
-#     batch_size=batch_size,
-#     shuffle=True,
-#     num_workers=1,
-# )
-# val_dataloader = DataLoader(
-#     ImageDataset("../../data/%s" % dataset_name, img_shape, mode="val"),
-#     batch_size=8,
-#     shuffle=True,
-#     num_workers=1,
-# )
+# Create the dataset
 train_dataset = Edge2Shoe(train_img_dir)
 train_loader = data.DataLoader(train_dataset, batch_size=batch_size)
 
@@ -125,7 +101,7 @@ for e in range(num_epochs):
 		real_A = edge_tensor;real_B = rgb_tensor
 
 		b_size = real_B.size(0)
-		noise = torch.randn(b_size, latent_dim, 1, 1, device=device)
+		noise = Variable(Tensor(np.random.normal(0, 1, (real_A.size(0), latent_dim))))
 
 		#-------------------------------
 		#  Train Generator and Encoder
@@ -142,22 +118,27 @@ for e in range(num_epochs):
 		loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, criterion_GAN)
 
 		#generator loss for LR-GAN
-		loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, z, D_LR, criterion_GAN)
+		loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, noise, D_LR, criterion_GAN)
 
 
         #l1 loss between generated image and real image
-		l1_image = loss_image(real_A, real_B, z, generator, criterion_pixel)
+		l1_image = loss_image(real_B, fake_B_VAE, criterion_pixel)
+
+		loss_GE = loss_VAE_GAN + loss_LR_GAN + lambda_pixel*l1_image + lambda_kl*kl_loss
+
+		loss_GE.backward(retain_graph=True)
 
 		#latent loss between encoded z and noise
-		l1_latent = loss_latent(noise, real_A, encoder, generator, criterion_latent)
+		l1_latent = loss_latent(fake_B_LR, encoder, noise, criterion_latent)
 
-		loss_G = loss_VAE_GAN + loss_LR_GAN + lambda_pixel*l1_image + lambda_latent*l1_latent + lambda_kl*kl_loss
+		loss_G = lambda_latent*l1_latent
 
 		loss_G.backward()
         # Update G
 		optimizer_G.step()
 		# Update E
 		optimizer_E.step()
+
 		#----------------------------------
 		#  Train Discriminator (cVAE-GAN)
 		#----------------------------------
@@ -165,7 +146,7 @@ for e in range(num_epochs):
 		D_VAE.train()
 		optimizer_D_VAE.zero_grad()
 		#loss for D_VAE
-		loss_D_VAE = loss_discriminator(D_VAE, real_A, real_B, generator, noise, criterion_GAN)
+		loss_D_VAE = loss_discriminator(D_VAE, fake_B_VAE, real_B, criterion_GAN)
 		loss_D_VAE.backward()
 		optimizer_D_VAE.step()
 
@@ -175,7 +156,7 @@ for e in range(num_epochs):
 		D_LR.train()
 		optimizer_D_LR.zero_grad()
 		#loss for D_LR
-		loss_D_LR = loss_discriminator(D_LR, real_A, real_B, generator, noise, criterion_GAN)
+		loss_D_LR = loss_discriminator(D_LR, fake_B_LR, real_B, criterion_GAN)
 		loss_D_LR.backward()
 		optimizer_D_LR.step()
 
@@ -188,13 +169,31 @@ for e in range(num_epochs):
 			1. You may want to visualize results during training for debugging purpose
 			2. Save your model every few iterations
 		"""
-		if idx % 10 == 0:  # visualize every 10 batches
-			visualize_images(Denormalize(fake_B_VAE.detach()).cpu(), 'Generated Images VAE')
-			visualize_images(Denormalize(fake_B_LR.detach()).cpu(), 'Generated Images LR')
-			visualize_images(Denormalize(real_B.detach()).cpu(), 'Real Images')
+		save_path='/Users/zy/Desktop/bicyclegan/image_results'
+		if idx % 1000 == 0:  # visualize every 1000 batches
+			visualize_images(
+    			Denormalize(fake_B_VAE.detach()).cpu(), 
+    			'Comparison VAE', e, idx, save_path
+			)
+			visualize_images(
+    			Denormalize(fake_B_LR.detach()).cpu(), 
+    			'Comparison LR', e, idx, save_path
+			)
+			visualize_images(
+				Denormalize(real_B.detach()).cpu(), 
+				'Real Images',e, idx, save_path
+			)
+			visualize_images(
+				Denormalize(real_A.detach()).cpu(), 
+				'Edge Images',e, idx, save_path
+			)
 
-		if idx % 100 == 0:  # save every 100 batches
+		if idx % 500 == 0:  # save every 500 batches
 			torch.save(generator.state_dict(), os.path.join(checkpoints_dir, f'generator_epoch{e}_batch{idx}.pth'))
 			torch.save(encoder.state_dict(), os.path.join(checkpoints_dir, f'encoder_epoch{e}_batch{idx}.pth'))
 			torch.save(D_VAE.state_dict(), os.path.join(checkpoints_dir, f'D_VAE_epoch{e}_batch{idx}.pth'))
 			torch.save(D_LR.state_dict(), os.path.join(checkpoints_dir, f'D_LR_epoch{e}_batch{idx}.pth'))
+
+	print(f'Epoch [{e+1}/{num_epochs}], Step [{global_step}], Loss G: {loss_G.item()}, Loss D_VAE: {loss_D_VAE.item()}, Loss D_LR: {loss_D_LR.item()}')
+
+		

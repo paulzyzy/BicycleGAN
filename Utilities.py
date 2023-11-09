@@ -2,26 +2,55 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 import functools
-from torch.optim import lr_scheduler
 import matplotlib.pyplot as plt
 import torchvision
-from PIL import Image
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
 import numpy as np
 import os
-import sys
-import glob
+import torchvision.transforms.functional as F
+import matplotlib.pyplot as plt
 
+# Normalize image tensor
+def Normalize(image):
+	return (image/255.0-0.5)*2.0
 
-def visualize_images(images, title):
-    grid_img = torchvision.utils.make_grid(images, nrow=8)
+# Denormalize image tensor
+def Denormalize(tensor):
+	return ((tensor+1.0)/2.0)*255.0
+
+def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir):
+    """
+    Visualizes the inference by saving side-by-side images of input and output.
+
+    Args:
+        denorm_tensor (Tensor): The denormalized generated image tensor.
+        prefix (str): Prefix for saving the file.
+        style_num (int): The style number to include in the filename.
+        image_num (int): The image number to include in the filename.
+        save_dir (str): The directory to save the images.
+    """
+    image_path = os.path.join(save_dir, f"{prefix}_style{style_num}_image{image_num}.png")
+    # Convert the tensor to PIL image for saving
+    pil_image = F.to_pil_image(denorm_tensor)
+    pil_image.save(image_path)
+
+def visualize_images(image, title, epoch, idx, save_path):
+    # Create a grid with 2 images per row for each pair of real and generated images
+    grid_img = torchvision.utils.make_grid(image, nrow=2)
+    # Convert to a numpy image
+    np_grid_img = grid_img.permute(1, 2, 0).numpy()
+    np_grid_img = np.clip(np_grid_img, 0, 255).astype(np.uint8)
+
+    # Plot and save the images
     plt.figure(figsize=(16, 12))
-    plt.imshow(grid_img.permute(1, 2, 0))
+    plt.imshow(np_grid_img)
     plt.title(title)
     plt.axis('off')
-    plt.show()
+    
+    # Save the figure
+    file_name = f"{title}_epoch{epoch}_batch{idx}.png"
+    save_full_path = os.path.join(save_path, file_name)
+    plt.savefig(save_full_path)
+    plt.close()  # Close the figure to avoid display
 
 
 def init_weights(net, init_type='normal', init_gain=0.02):
@@ -93,37 +122,32 @@ def reparameterization(mean, log_var):
 
     return z
 
-def loss_image(real_A, real_B, z, G, criterion_pixel):
-    fake = G(real_A, z)
+def loss_image(real_B, fake, criterion_pixel):
     loss_pixel = criterion_pixel(fake, real_B)
     return loss_pixel
 
-def loss_latent(noise, real_A, E, G, criterion_latent):
-    fake = G(real_A, noise)
-    # encoded_z = E(fake)
+def loss_latent(fake, E, noise, criterion_latent):
     encoded_z_tuple = E(fake)
     encoded_z = encoded_z_tuple[0]
     encoded_z = encoded_z.squeeze() # squeeze the dimension of 1
     loss_latent = criterion_latent(encoded_z, noise)
     return loss_latent
 
-def loss_discriminator(D, real_A, real_B, G, noise, criterion):
+def loss_discriminator(D, fake, real_B, criterion):
     '''
     1. Forward real images into the discriminator
     2. Compute loss between Valid_label and dicriminator output on real images
-    3. Forward noise into the generator to get fake images
     4. Forward fake images to the discriminator
     5. Compute loss between Fake_label and discriminator output on fake images
     6. sum real loss and fake loss as the loss_D
     7. we also need to output fake images generate by G(noise) for loss_generator computation
     '''
     
-    
     real_output = D(real_B)
     real_output = real_output.squeeze()
     valid_label = torch.ones_like(real_output, requires_grad=False)
     real_loss = criterion(real_output, valid_label)
-    fake = G(real_A, noise)
+
     fake_output = D(fake.detach())
     fake_output = fake_output.squeeze()
     fake_label = torch.zeros_like(fake_output, requires_grad=False)
