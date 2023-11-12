@@ -15,8 +15,7 @@ import time
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 
-# Create a summary writer
-writer = SummaryWriter('runs/bicyclegan_experiment_1')
+
 
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -41,15 +40,19 @@ ndf = 64 # number of discriminator filters
 init_type='normal'
 init_gain=0.02
 netG='unet_128'
-netD='basic_128'
+netD='basic_128_multi'
 norm='batch'
 nl='relu'
 use_dropout=False
-where_add='input'
+where_add='all'
 upsample='bilinear'
 num_generator_filters = 64
 output_nc=3	
 
+
+# Create a summary writer
+experiment_name = f'runs/bicyclegan_experiment_Gen_{netG}_{where_add}_Discrim{netD}'
+writer = SummaryWriter(experiment_name)
 # Random seeds (optional)
 torch.manual_seed(1); np.random.seed(1)
 
@@ -189,10 +192,10 @@ for e in range(num_epochs):
 			)
 
 		if idx % 500 == 0:  # save every 500 batches
-			torch.save(generator.state_dict(), os.path.join(checkpoints_dir, f'generator_epoch{e}_batch{idx}.pth'))
-			torch.save(encoder.state_dict(), os.path.join(checkpoints_dir, f'encoder_epoch{e}_batch{idx}.pth'))
-			torch.save(D_VAE.state_dict(), os.path.join(checkpoints_dir, f'D_VAE_epoch{e}_batch{idx}.pth'))
-			torch.save(D_LR.state_dict(), os.path.join(checkpoints_dir, f'D_LR_epoch{e}_batch{idx}.pth'))
+			torch.save(generator.state_dict(), os.path.join(checkpoints_dir, f'generator_epoch{e}_batch{idx}_Gen_{netG}_{where_add}_Discrim{netD}.pth'))
+			torch.save(encoder.state_dict(), os.path.join(checkpoints_dir, f'encoder_epoch{e}_batch{idx}_Gen_{netG}_{where_add}_Discrim{netD}.pth'))
+			torch.save(D_VAE.state_dict(), os.path.join(checkpoints_dir, f'D_VAE_epoch{e}_batch{idx}_Gen_{netG}_{where_add}_Discrim{netD}.pth'))
+			torch.save(D_LR.state_dict(), os.path.join(checkpoints_dir, f'D_LR_epoch{e}_batch{idx}_Gen_{netG}_{where_add}_Discrim{netD}.pth'))
 
 	print(f'Epoch [{e+1}/{num_epochs}], Step [{global_step}], Loss G: {loss_G.item()}, Loss D_VAE: {loss_D_VAE.item()}, Loss D_LR: {loss_D_LR.item()}')
 
