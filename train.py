@@ -39,7 +39,7 @@ def train(cfg):
 	writer = SummaryWriter(cfg.experiment_path)
 	# Create the dataset
 	train_dataset = instantiate(cfg.datas.datasets)
-	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.param.batch_size)
+	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.params.batch_size)
 
 	generator = model.generator.to(device)
 	encoder = model.encoder.to(device)
@@ -63,7 +63,7 @@ def train(cfg):
 	# Initialize a counter for the total number of iterations
 	global_step = 0
 
-	for e in range(cfg.param.num_epochs):
+	for e in range(cfg.params.num_epochs):
 		start = time.time()
 		for idx, data in enumerate(train_loader):
 			# Increment the global step counter
@@ -98,14 +98,14 @@ def train(cfg):
 			#l1 loss between generated image and real image
 			l1_image = loss_image(real_B, fake_B_VAE, criterion_pixel)
 
-			loss_GE = loss_VAE_GAN + loss_LR_GAN + cfg.param.lambda_pixel*l1_image + cfg.param.lambda_kl*kl_loss
+			loss_GE = loss_VAE_GAN + loss_LR_GAN + cfg.params.lambda_pixel*l1_image + cfg.params.lambda_kl*kl_loss
 
 			loss_GE.backward(retain_graph=True)
 
 			#latent loss between encoded z and noise
 			l1_latent = loss_latent(fake_B_LR, encoder, noise, criterion_latent)
 
-			loss_G = cfg.param.lambda_latent*l1_latent
+			loss_G = cfg.params.lambda_latent*l1_latent
 
 			loss_G.backward()
 			# Update G
