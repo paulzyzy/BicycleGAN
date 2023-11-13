@@ -26,14 +26,17 @@ def train(cfg):
 	torch.manual_seed(1); np.random.seed(1)
 	torch.backends.cudnn.deterministic = True
 
+	# save_results_path = os.path.join(os.path.join(cfg.paths.root_dir, "image_results"),cfg.experiment_name)
+	# os.makedirs(save_pth_path, exist_ok=True)
+	save_results_path = os.path.join(cfg.paths.root_dir, "image_results")
+	os.makedirs(save_results_path, exist_ok=True)
 	save_pth_path = os.path.join(cfg.paths.checkpoints_dir,cfg.experiment_name)
 	os.makedirs(save_pth_path, exist_ok=True)
 
 	OmegaConf.resolve(cfg)
-	print(OmegaConf.to_yaml(cfg))
+	#print(OmegaConf.to_yaml(cfg))
 	model = instantiate(cfg.model.init)
 	writer = SummaryWriter(cfg.experiment_path)
-
 	# Create the dataset
 	train_dataset = instantiate(cfg.datas.datasets)
 	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.param.batch_size)
@@ -140,23 +143,22 @@ def train(cfg):
 				1. You may want to visualize results during training for debugging purpose
 				2. Save your model every few iterations
 			"""
-			save_path='/home/eddieshen/CIS680/final/BicycleGAN/image_results/'
 			if idx % 1000 == 0:  # visualize every 1000 batches
 				visualize_images(
 					Denormalize(fake_B_VAE.detach()).cpu(), 
-					'Comparison VAE', e, idx, save_path
+					'Comparison VAE', e, idx, save_results_path
 				)
 				visualize_images(
 					Denormalize(fake_B_LR.detach()).cpu(), 
-					'Comparison LR', e, idx, save_path
+					'Comparison LR', e, idx, save_results_path
 				)
 				visualize_images(
 					Denormalize(real_B.detach()).cpu(), 
-					'Real Images',e, idx, save_path
+					'Real Images',e, idx, save_results_path
 				)
 				visualize_images(
 					Denormalize(real_A.detach()).cpu(), 
-					'Edge Images',e, idx, save_path
+					'Edge Images',e, idx, save_results_path
 				)
 
 			if idx % 500 == 0:  # save every 500 batches
