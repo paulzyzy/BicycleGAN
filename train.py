@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
-from torch.utils import data
+import torch
 from torch import nn, optim
 from vis_tools import *
 from datasets import *
@@ -9,7 +9,6 @@ from models import *
 from Utilities import *
 import  os
 #import itertools
-import torch
 import time
 #import pdb
 from torch.autograd import Variable
@@ -36,8 +35,8 @@ def train(cfg):
 	writer = SummaryWriter(cfg.experiment_path)
 
 	# Create the dataset
-	train_dataset = instantiate(cfg.data.datasets)
-	train_loader = data.DataLoader(train_dataset, batch_size=cfg.param.batch_size)
+	train_dataset = instantiate(cfg.datas.datasets)
+	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.param.batch_size)
 
 	generator = model.generator.to(device)
 	encoder = model.encoder.to(device)
@@ -73,7 +72,7 @@ def train(cfg):
 			real_A = edge_tensor;real_B = rgb_tensor
 
 			b_size = real_B.size(0)
-			noise = Variable(Tensor(np.random.normal(0, 1, (real_A.size(0), latent_dim))))
+			noise = Variable(Tensor(np.random.normal(0, 1, (real_A.size(0), cfg.model.names.latent_dim))))
 
 			#-------------------------------
 			#  Train Generator and Encoder

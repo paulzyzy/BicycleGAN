@@ -1,6 +1,6 @@
 defaults:
-  - data: edge2shoes
-  - model: BCGAN_large_multi
+  - datas: edge2shoes
+  - model: defaults
   - paths: defaults
   - optimizers: adam
 

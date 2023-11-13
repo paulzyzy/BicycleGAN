@@ -2,10 +2,11 @@ names:
   netG_name: "unet_128"
   netD_name: "basic_128"
   where_add_type: "input"
+  latent_dim: 8
 
 init:
   _target_: models.BicycleGAN
-  latent_dim: 8
+  latent_dim: ${model.names.latent_dim}
   img_shape: [3, 128, 128]
   netG: ${model.names.netG_name}
   netD: ${model.names.netD_name}
