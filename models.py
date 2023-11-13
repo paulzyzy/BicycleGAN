@@ -136,7 +136,19 @@ def Discriminator(img_shape, ndf, netD, norm='batch', nl='lrelu', init_type='xav
 
 #         return 
 
+class BicycleGAN(nn.Module):
+    def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
+             use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear',ndf=64, netD='basic_128'):
+        super(BicycleGAN, self).__init__()
 
+        self.generator = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
+             use_dropout, init_type, init_gain, where_add, upsample)
+
+        self.D_VAE = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1)
+
+        self.D_LR = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1)
+        
+        self.encoder = Encoder(latent_dim)
 
 
 
