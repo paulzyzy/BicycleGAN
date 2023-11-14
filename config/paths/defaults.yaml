@@ -2,3 +2,7 @@
 root_dir: /home/eddieshen/CIS680/final/BicycleGAN
 data_dir: ${paths.root_dir}/${datas.name}
 checkpoints_dir: ${paths.root_dir}/checkpoints
+# for inference
+inference_dir : ${paths.root_dir}/inference_results
+
+

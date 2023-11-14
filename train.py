@@ -33,7 +33,7 @@ def train(cfg):
 	save_pth_path = os.path.join(cfg.paths.checkpoints_dir,cfg.experiment_name)
 	os.makedirs(save_pth_path, exist_ok=True)
 
-	OmegaConf.resolve(cfg)
+	#OmegaConf.resolve(cfg)
 	#print(OmegaConf.to_yaml(cfg))
 	model = instantiate(cfg.model.init)
 	writer = SummaryWriter(cfg.experiment_path)
