@@ -130,16 +130,16 @@ def train_soft_intro_vae_toy():
                 param.requires_grad = False
 
             # generate 'fake' data
-            fake = model.sample(noise_batch)
+            fake = model.sample(real_A,noise_batch)
             # optimize for real data
             real_mu, real_logvar = model.encode(real_B)
             z = reparameterization(real_mu, real_logvar)
-            rec = model.decoder(z)  # reconstruction
+            rec = model.decoder(real_A,z)  # reconstruction
             # we also want to see what is the reconstruction error from mu
             _, _, _, rec_det = model(real_A, real_B, deterministic=True)
 
             loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
-            # reconstruction error from mu (not optimized, only to observe)
+            # reconstruction error from mu (not optimized, only to observe) not used in back back propagation
             loss_rec_det = calc_reconstruction_loss(real_B, rec_det.detach(), loss_type=recon_loss_type,
                                                     reduction="mean")
 
@@ -147,9 +147,9 @@ def train_soft_intro_vae_toy():
             lossE_real_kl = calc_kl(real_logvar, real_mu, reduce="mean")
 
             # prepare the fake data for the expELBO
-            fake_mu, fake_logvar, z_fake, rec_fake = model(fake.detach())
+            fake_mu, fake_logvar, z_fake, rec_fake = model(real_A,fake.detach())
             # we also consider the reconstructions as 'fake' data, as they are output of the decoder
-            rec_mu, rec_logvar, z_rec, rec_rec = model(rec.detach())
+            rec_mu, rec_logvar, z_rec, rec_rec = model(real_A,rec.detach())
 
             # KLD loss for the fake data
             fake_kl_e = calc_kl(fake_logvar, fake_mu, reduce="none")
@@ -178,7 +178,7 @@ def train_soft_intro_vae_toy():
 
             # generate fake
             fake = model.sample(noise_batch)
-            rec = model.decoder(z.detach())
+            rec = model.decoder(real_A,z.detach())
             # ELBO loss for real -- just the reconstruction, KLD for real doesn't affect the decoder
             loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
 
@@ -189,8 +189,8 @@ def train_soft_intro_vae_toy():
             fake_mu, fake_logvar = model.encode(fake)
             z_fake = reparameterization(fake_mu, fake_logvar)
 
-            rec_rec = model.decode(z_rec.detach())
-            rec_fake = model.decode(z_fake.detach())
+            rec_rec = model.decode(real_A,z_rec.detach())
+            rec_fake = model.decode(real_A,z_fake.detach())
 
             loss_rec_rec = calc_reconstruction_loss(rec.detach(), rec_rec, loss_type=recon_loss_type, reduction="mean")
             loss_rec_fake = calc_reconstruction_loss(fake.detach(), rec_fake, loss_type=recon_loss_type,
