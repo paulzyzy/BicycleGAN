@@ -2,7 +2,6 @@ defaults:
   - datas: edge2shoes_val
   - model: defaults
   - paths: defaults
-  - optimizers: adam
 
 experiment_name : bicyclegan_experiment_Gen_${model.names.netG_name}_WhereAdd_${model.names.where_add_type}_Discrim_${model.names.netD_name}
 experiment_path : runs/${experiment_name}
@@ -13,5 +12,5 @@ params:
   lambda_kl : 0.01          # Loss weights for kl divergence
   batch_size : 8
   num_epochs : 10
-  num_styles: 10 # Number of styles to sample
-  num_images : 1  # Number of images to test
+  num_styles: 8 # Number of styles to sample
+  num_images : 8  # Number of images to test

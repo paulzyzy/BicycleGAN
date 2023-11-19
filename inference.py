@@ -14,8 +14,6 @@ from hydra.utils import instantiate
 # Device configuration
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
 @hydra.main(version_base=None,config_path="config", config_name="eval")
 def inference(cfg):
     save_infer_path = os.path.join(cfg.paths.inference_dir, cfg.experiment_name)
@@ -23,14 +21,17 @@ def inference(cfg):
     model = instantiate(cfg.model.init)
     best_model_path = os.path.join(cfg.paths.checkpoints_dir,\
                                    cfg.experiment_name,\
-                                   'generator_epoch9_batch6000.pth')
+                                   'generator_epoch9_batch5500.pth')
+
     generator = model.generator.to(device)
     generator.load_state_dict(torch.load(best_model_path, map_location=device))
     generator.eval()
     val_dataset = instantiate(cfg.datas.datasets)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=cfg.params.num_images, shuffle=False) 
     #Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
-    real_A, real_B = next(iter(val_loader))
+
+    for i in range(5):
+        real_A, real_B = next(iter(val_loader))
     real_A = Normalize(real_A).to(device)
 
     for k in range(cfg.params.num_styles):

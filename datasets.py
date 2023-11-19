@@ -34,9 +34,11 @@ class Edge2Shoe(data.Dataset):
 
 
 if __name__ == '__main__':
-	img_dir = '/home/zlz/BicycleGAN/datasets/edges2shoes/train/' 
+	img_dir = '/home/eddieshen/CIS680/final/BicycleGAN/edges2shoes/train/' 
 	dataset = Edge2Shoe(img_dir)
-	loader = data.DataLoader(dataset, batch_size=32)
+	loader = data.DataLoader(dataset, batch_size=8)
+	print(len(loader))
+	exit()
 	for idx, data in enumerate(loader):
 		edge_tensor, rgb_tensor = data
 		print(idx, edge_tensor.shape, rgb_tensor.shape)
