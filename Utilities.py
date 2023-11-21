@@ -179,13 +179,17 @@ def loss_generator(G, real, z, D, criterion_GAN):
     fake = G(real, z)
 
     # Forward the generated fake images through the corresponding discriminator D
-    fake_pred = D(fake)
+    fake_pred = D(fake.detach())
     valid = torch.ones_like(fake_pred, requires_grad=False)
     # Compute loss between the discriminator's predictions on the fake images and valid labels (which are all 1s)
     loss_G = criterion_GAN(fake_pred, valid)
 
     return loss_G, fake
 
+def compute_GANloss(outs, gt, loss_func):
+    """Computes the MSE between model output and scalar gt"""
+    loss = sum([loss_func(out, gt) for out in outs])
+    return loss
 
 
 # Helper function for intro_VAE

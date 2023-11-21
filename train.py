@@ -13,6 +13,7 @@ import time
 #import pdb
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
+from functools import partial
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
@@ -55,7 +56,8 @@ def train(cfg):
 	Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
 	# For adversarial loss (optional to use)
-	criterion_GAN = torch.nn.MSELoss().to(device)
+	#criterion_GAN = torch.nn.MSELoss(reduction='sum').to(device)
+	criterion_GAN = partial(compute_GANloss, loss_func=torch.nn.MSELoss().to(device))
 	criterion_pixel = torch.nn.L1Loss().to(device)
 	criterion_latent = torch.nn.L1Loss().to(device)
 	criterion_kl = torch.nn.KLDivLoss().to(device)
