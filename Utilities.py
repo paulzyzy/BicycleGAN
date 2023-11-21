@@ -62,6 +62,18 @@ def visualize_images(image, title, epoch, idx, save_path):
     plt.savefig(save_full_path)
     plt.close()  # Close the figure to avoid display
 
+def set_requires_grad(nets, requires_grad=False):
+    """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
+    Parameters:
+        nets (network list)   -- a list of networks
+        requires_grad (bool)  -- whether the networks require gradients or not
+    """
+    if not isinstance(nets, list):
+        nets = [nets]
+    for net in nets:
+        if net is not None:
+            for param in net.parameters():
+                param.requires_grad = requires_grad
 
 def init_weights(net, init_type='normal', init_gain=0.02):
     """Initialize network weights.
@@ -152,7 +164,6 @@ def loss_discriminator(D, fake, real_B, criterion):
     6. sum real loss and fake loss as the loss_D
     7. we also need to output fake images generate by G(noise) for loss_generator computation
     '''
-    
     real_output = D(real_B)
     real_output = real_output.squeeze()
     valid_label = torch.ones_like(real_output, requires_grad=False)
@@ -179,7 +190,7 @@ def loss_generator(G, real, z, D, criterion_GAN):
     fake = G(real, z)
 
     # Forward the generated fake images through the corresponding discriminator D
-    fake_pred = D(fake.detach())
+    fake_pred = D(fake)
     valid = torch.ones_like(fake_pred, requires_grad=False)
     # Compute loss between the discriminator's predictions on the fake images and valid labels (which are all 1s)
     loss_G = criterion_GAN(fake_pred, valid)

@@ -83,6 +83,10 @@ def train(cfg):
 			#  Train Generator and Encoder
 			#------------------------------
 			encoder.train(); generator.train()
+			set_requires_grad(D_VAE)
+			set_requires_grad(D_LR)
+			set_requires_grad(encoder, True)
+			set_requires_grad(generator, True)
 			optimizer_E.zero_grad(); optimizer_G.zero_grad()
 
 			mean, log_var = encoder(real_B)
@@ -119,7 +123,10 @@ def train(cfg):
 			#----------------------------------
 			#  Train Discriminator (cVAE-GAN)
 			#----------------------------------
-
+			set_requires_grad(D_VAE, True)
+			set_requires_grad(D_LR, True)
+			set_requires_grad(encoder)
+			set_requires_grad(generator)
 			D_VAE.train()
 			optimizer_D_VAE.zero_grad()
 			#loss for D_VAE
