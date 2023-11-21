@@ -101,6 +101,8 @@ def train(cfg):
 			loss_GE = loss_VAE_GAN + loss_LR_GAN + cfg.params.lambda_pixel*l1_image + cfg.params.lambda_kl*kl_loss
 
 			loss_GE.backward(retain_graph=True)
+			# Update E
+			optimizer_E.step()
 
 			#latent loss between encoded z and noise
 			l1_latent = loss_latent(fake_B_LR, encoder, noise, criterion_latent)
@@ -110,8 +112,7 @@ def train(cfg):
 			loss_G.backward()
 			# Update G
 			optimizer_G.step()
-			# Update E
-			optimizer_E.step()
+			
 
 			#----------------------------------
 			#  Train Discriminator (cVAE-GAN)

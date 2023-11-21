@@ -150,6 +150,40 @@ class BicycleGAN(nn.Module):
         
         self.encoder = Encoder(latent_dim)
 
+# SoftIntroVAE model
+class SoftIntroVAESimple(nn.Module):
+    def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
+             use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear'):
+        super(SoftIntroVAESimple, self).__init__()
+        self.encoder = Encoder(latent_dim)
+        self.latent_dim = latent_dim
+        self.decoder = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
+             use_dropout, init_type, init_gain, where_add, upsample)
+
+    def forward(self, A, B, deterministic=False):
+        mu, logvar = self.encode(B)
+        if deterministic:
+            z = mu
+        else:
+            z = reparameterization(mu, logvar)
+        y = self.decode(A, z)
+        return mu, logvar, z, y
+
+    def sample(self, A, z):
+        y = self.decode(A, z)
+        return y
+
+    def sample_with_noise(self, A, num_samples=1, device=torch.device("cpu")):
+        z = torch.randn(num_samples, self.latent_dim).to(device)
+        return self.decode(A, z)
+
+    def encode(self, B):
+        mu, logvar = self.encoder(B)
+        return mu, logvar
+
+    def decode(self, A, z):
+        y = self.decoder(A, z)
+        return y
 
 
 

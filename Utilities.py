@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
 import os
-import torchvision.transforms.functional as F
+# import torchvision.transforms.functional as F
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 # Normalize image tensor
@@ -184,3 +185,203 @@ def loss_generator(G, real, z, D, criterion_GAN):
     loss_G = criterion_GAN(fake_pred, valid)
 
     return loss_G, fake
+
+
+
+# Helper function for intro_VAE
+def load_model(model, pretrained):
+    weights = torch.load(pretrained)
+    pretrained_dict = weights['model']
+    model.load_state_dict(pretrained_dict)
+    model_dict = model.state_dict()
+
+
+def save_checkpoint(model, epoch, iteration, prefix=""):
+    model_out_path = "./saves/" + prefix + "model_epoch_{}_iter_{}.pth".format(epoch, iteration)
+    state = {"epoch": epoch, "model": model.state_dict()}
+    if not os.path.exists("./saves/"):
+        os.makedirs("./saves/")
+
+    torch.save(state, model_out_path)
+
+    print("model checkpoint saved @ {}".format(model_out_path))
+
+
+def setup_grid(range_lim=4, n_pts=1000, device=torch.device("cpu")):
+    x = torch.linspace(-range_lim, range_lim, n_pts)
+    xx, yy = torch.meshgrid((x, x))
+    zz = torch.stack((xx.flatten(), yy.flatten()), dim=1)
+    return xx, yy, zz.to(device)
+
+
+def format_ax(ax, range_lim):
+    ax.set_xlim(-range_lim, range_lim)
+    ax.set_ylim(-range_lim, range_lim)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    ax.invert_yaxis()
+
+
+def plot_vae_density(model, ax, test_grid, n_pts, batch_size, colorbar=False, beta_kl=1.0,
+                     beta_recon=1.0, set_title=True, device=torch.device('cpu')):
+    """ plots square grid and vae density """
+    model.eval()
+    xx, yy, zz = test_grid
+    # compute posterior approx density
+    # p(x) = E_{z~p(z)}[q(z|x)]
+    zzk = []
+    with torch.no_grad():
+        for zz_i in zz.split(batch_size, dim=0):
+            zz_i = zz_i.to(device)
+            mu, logvar, _, rec = model(zz_i, deterministic=True)
+            recon_error = calc_reconstruction_loss(zz_i, rec, loss_type='mse', reduction='none')
+            while len(recon_error.shape) > 1:
+                recon_error = recon_error.sum(-1)
+            kl = calc_kl(logvar=logvar, mu=mu, reduce="none")
+            zzk_i = -1.0 * (beta_kl * kl + beta_recon * recon_error)
+            zzk += [zzk_i.exp()]
+    p_x = torch.cat(zzk, 0)
+    # plot
+    cmesh = ax.pcolormesh(xx.data.cpu().numpy(), yy.data.cpu().numpy(), p_x.view(n_pts, n_pts).data.cpu().numpy(),
+                          cmap=plt.cm.jet)
+    ax.set_facecolor(plt.cm.jet(0.))
+    if set_title:
+        ax.set_title('VAE density')
+    if colorbar:
+        plt.colorbar(cmesh)
+
+
+def calc_reconstruction_loss(x, recon_x, loss_type='mse', reduction='sum'):
+    """
+
+    :param x: original inputs
+    :param recon_x:  reconstruction of the VAE's input
+    :param loss_type: "mse", "l1", "bce", "gaussian"
+    :param reduction: "sum", "mean", "none"
+    :return: recon_loss
+    """
+    recon_x = recon_x.view(x.size(0), -1)
+    x = x.view(x.size(0), -1)
+    if reduction not in ['sum', 'mean', 'none']:
+        raise NotImplementedError
+    if loss_type == 'mse':
+        recon_error = F.mse_loss(recon_x, x, reduction='none')
+        recon_error = recon_error.sum(1)
+        if reduction == 'sum':
+            recon_error = recon_error.sum()
+        elif reduction == 'mean':
+            recon_error = recon_error.mean()
+    elif loss_type == 'l1':
+        recon_error = F.l1_loss(recon_x, x, reduction=reduction)
+    elif loss_type == 'bce':
+        recon_error = F.binary_cross_entropy(recon_x, x, reduction=reduction)
+    else:
+        raise NotImplementedError
+    return recon_error
+
+
+def calc_kl(logvar, mu, mu_o=10, is_outlier=False, reduce='sum'):
+    """
+    Calculate kl-divergence
+    :param logvar: log-variance from the encoder
+    :param mu: mean from the encoder
+    :param mu_o: negative mean for outliers (hyper-parameter)
+    :param is_outlier: if True, calculates with mu_neg
+    :param reduce: type of reduce: 'sum', 'none'
+    :return: kld
+    """
+    if is_outlier:
+        kl = -0.5 * (1 + logvar - mu.pow(2) - logvar.exp() + 2 * mu * mu_o - mu_o.pow(2)).sum(1)
+    else:
+        kl = -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(1)
+    if reduce == 'sum':
+        kl = torch.sum(kl)
+    elif reduce == 'mean':
+        kl = torch.mean(kl)
+    return kl
+
+
+def plot_samples_density(dataset, model, scale, device):
+    """
+    Plot real data from dataset, generated samples from model and density estimation
+    """
+    model.eval()
+    fig = plt.figure(figsize=(18, 6))
+    ax1 = fig.add_subplot(1, 3, 1)
+    plot_batch = dataset.next_batch(batch_size=1024, device=device)
+    plot_batch = plot_batch.data.cpu().numpy()
+    ax1.scatter(plot_batch[:, 0], plot_batch[:, 1], s=8, label="true dist")
+    ax1.set_xlim((-scale * 2, scale * 2))
+    ax1.set_ylim((-scale * 2, scale * 2))
+    ax1.set_axis_off()
+    ax1.set_title('Real Data')
+
+    ax2 = fig.add_subplot(1, 3, 2)
+    noise_batch = torch.randn(size=(1024, model.zdim)).to(device)
+    plot_fake_batch = model.sample(noise_batch)
+    plot_fake_batch = plot_fake_batch.data.cpu().numpy()
+    ax2.scatter(plot_fake_batch[:, 0], plot_fake_batch[:, 1], s=8, c='g', label="fake")
+    ax2.set_xlim((-scale * 2, scale * 2))
+    ax2.set_ylim((-scale * 2, scale * 2))
+    ax2.set_axis_off()
+    ax2.set_title('Fake Samples')
+
+    ax3 = fig.add_subplot(1, 3, 3)
+    test_grid = setup_grid(range_lim=scale * 2, n_pts=1024, device=torch.device('cpu'))
+    plot_vae_density(model, ax3, test_grid, n_pts=1024, batch_size=256, colorbar=False,
+                     beta_kl=1.0, beta_recon=1.0, set_title=False, device=device)
+    ax3.set_axis_off()
+    ax3.set_title("Density Estimation")
+    return fig
+
+
+def calculate_elbo_with_grid(model, evalset, test_grid, beta_kl=1.0, beta_recon=1.0, batch_size=512, num_iter=100,
+                             device=torch.device("cpu")):
+    model.eval()
+    xx, yy, zz = test_grid
+    zzk = []
+    elbos = []
+    with torch.no_grad():
+        for zz_i in zz.split(batch_size, dim=0):
+            zz_i = zz_i.to(device)
+            mu, logvar, _, rec = model(zz_i, deterministic=True)
+            recon_error = calc_reconstruction_loss(zz_i, rec, loss_type='mse', reduction='none')
+            while len(recon_error.shape) > 1:
+                recon_error = recon_error.sum(-1)
+            kl = calc_kl(logvar=logvar, mu=mu, reduce="none")
+            zzk_i = 1.0 * (beta_kl * kl + beta_recon * recon_error)
+            zzk += [zzk_i]
+        elbos_grid = torch.cat(zzk, 0)
+        for i in range(num_iter):
+            batch = evalset.next_batch(batch_size=batch_size, device=device)
+            mu, logvar, _, rec = model(batch, deterministic=True)
+            recon_error = calc_reconstruction_loss(batch, rec, loss_type='mse', reduction='none')
+            while len(recon_error.shape) > 1:
+                recon_error = recon_error.sum(-1)
+            kl = calc_kl(logvar=logvar, mu=mu, reduce="none")
+            elbos += [1.0 * (beta_kl * kl + beta_recon * recon_error)]
+    elbos = torch.cat(elbos, dim=0)
+    normalizing_factor = torch.cat([elbos_grid, elbos], dim=0).sum()
+    elbos = elbos / normalizing_factor
+    return elbos.mean().data.cpu().item()
+
+
+def calculate_sample_kl(model, evalset, num_samples=5000, device=torch.device("cpu"), hist_bins=100, use_jsd=False,
+                        xy_range=(-2, 2)):
+    hist_range = [[xy_range[0], xy_range[1]], [xy_range[0], xy_range[1]]]
+    real_samples = evalset.next_batch(batch_size=num_samples, device=device).data.cpu().numpy()
+    real_hist, _, _ = np.histogram2d(real_samples[:, 0], real_samples[:, 1], bins=hist_bins, density=True,
+                                     range=hist_range)
+    real_hist = torch.tensor(real_hist).to(device)
+    fake_samples = model.sample_with_noise(num_samples=num_samples, device=device).data.cpu().numpy()
+    fake_hist, _, _ = np.histogram2d(fake_samples[:, 0], fake_samples[:, 1], bins=hist_bins, density=True,
+                                     range=hist_range)
+    fake_hist = torch.tensor(fake_hist).to(device)
+    if use_jsd:
+        kl_1 = F.kl_div(torch.log(real_hist + 1e-14), 0.5 * (fake_hist + real_hist), reduction='batchmean')
+        kl_2 = F.kl_div(torch.log(fake_hist + 1e-14), 0.5 * (fake_hist + real_hist), reduction='batchmean')
+        jsd = 0.5 * (kl_1 + kl_2)
+        return jsd.data.cpu().item()
+    else:
+        kl = F.kl_div(torch.log(fake_hist + 1e-14), real_hist, reduction='batchmean')
+        return kl.data.cpu().item()
