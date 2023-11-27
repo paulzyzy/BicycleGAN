@@ -202,6 +202,10 @@ def compute_GANloss(outs, gt, loss_func):
     loss = sum([loss_func(out, gt) for out in outs])
     return loss
 
+def compute_KLloss(mu, logvar):
+    """Computes the KL loss"""
+    loss = 0.5 * torch.sum(torch.exp(logvar) + mu ** 2 - logvar - 1)
+    return loss
 
 # Helper function for intro_VAE
 def load_model(model, pretrained):

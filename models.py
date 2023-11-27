@@ -12,7 +12,7 @@ print(torch.__version__)
 #        Encoder 
 ##############################
 class Encoder(nn.Module):
-    def __init__(self, latent_dim):
+    def __init__(self, channels, latent_dim):
         super(Encoder, self).__init__()
         """ The encoder used in both cVAE-GAN and cLR-GAN, which encode image B or B_hat to latent vector
             This encoder uses resnet-18 to extract features, and further encode them into a distribution
@@ -32,7 +32,9 @@ class Encoder(nn.Module):
         """
 
         # Extracts features at the last fully-connected
-        resnet18_model = resnet18(pretrained=True)      
+        resnet18_model = resnet18(pretrained=False)  
+        resnet18_model.conv1 = nn.Conv2d(channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    
         self.feature_extractor = nn.Sequential(*list(resnet18_model.children())[:-3])
         self.pooling = nn.AvgPool2d(kernel_size=8, stride=8, padding=0)
 
@@ -148,7 +150,7 @@ class BicycleGAN(nn.Module):
 
         self.D_LR = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1)
         
-        self.encoder = Encoder(latent_dim)
+        self.encoder = Encoder(3, latent_dim)
 
 # SoftIntroVAE model
 class SoftIntroVAESimple(nn.Module):

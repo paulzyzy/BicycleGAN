@@ -60,7 +60,9 @@ def train(cfg):
 	criterion_GAN = partial(compute_GANloss, loss_func=torch.nn.MSELoss().to(device))
 	criterion_pixel = torch.nn.L1Loss().to(device)
 	criterion_latent = torch.nn.L1Loss().to(device)
-	criterion_kl = torch.nn.KLDivLoss().to(device)
+	criterion_kl = compute_KLloss
+
+	#criterion_kl = torch.nn.KLDivLoss().to(device)
 
 	# Initialize a counter for the total number of iterations
 	global_step = 0
@@ -92,7 +94,8 @@ def train(cfg):
 			mean, log_var = encoder(real_B)
 			z = reparameterization(mean, log_var)
 			# KL loss
-			kl_loss = criterion_kl(z,noise)
+			# kl_loss = criterion_kl(z,noise)
+			kl_loss = criterion_kl(mean, log_var).to(device)
 
 			#generator loss for VAE-GAN
 			loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, criterion_GAN)
