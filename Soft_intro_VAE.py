@@ -26,14 +26,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 def train_soft_intro_vae_toy():
-    n_iter=30000
-    num_vae=2000
-    save_interval=3000
+    n_iter=90010
+    num_vae=10000
+    save_interval=9000
     recon_loss_type="mse"
     beta_kl=1.0
     beta_rec=1.0
     beta_neg=1.0
-    test_iter=5000
+    test_iter=10000
     seed=99
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
