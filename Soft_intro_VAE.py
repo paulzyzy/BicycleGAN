@@ -13,20 +13,22 @@ from tqdm import tqdm
 import random
 import matplotlib.pyplot as plt
 import matplotlib
-import hydra
 
 from datasets import *
 from Utilities import *
 from models import *
+import torch
+torch.cuda.empty_cache()
 
 matplotlib.use('Agg')
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
 
 def train_soft_intro_vae_toy():
     n_iter=30000
     num_vae=2000
-    save_interval=5000
+    save_interval=3000
     recon_loss_type="mse"
     beta_kl=1.0
     beta_rec=1.0
@@ -35,7 +37,7 @@ def train_soft_intro_vae_toy():
     seed=99
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
-    batch_size = 512
+    batch_size = 32
     lr_e=2e-4
     lr_d=2e-4
     latent_dim = 8        # latent dimension for the encoded images from domain B
@@ -64,7 +66,7 @@ def train_soft_intro_vae_toy():
 
     model = SoftIntroVAESimple(latent_dim, img_shape,output_nc, num_generator_filters, netG, norm, nl,
              use_dropout, init_type, init_gain, where_add, upsample).to(device)
-    print(model)
+    # print(model)
 
     optimizer_e = optim.Adam(model.encoder.parameters(), lr=lr_e)
     optimizer_d = optim.Adam(model.decoder.parameters(), lr=lr_d)
@@ -121,14 +123,14 @@ def train_soft_intro_vae_toy():
         else:
             # soft-intro-vae training
             # generate random noise to produce 'fake' later
-            noise_batch = torch.randn(size=(batch_size, latent_dim)).to(device)
+            noise_batch = torch.randn(size=(real_A.shape[0], latent_dim)).to(device)
 
             # =========== Update E ================
             for param in model.encoder.parameters():
                 param.requires_grad = True
             for param in model.decoder.parameters():
                 param.requires_grad = False
-
+            # print(real_A.shape,noise_batch.shape)
             # generate 'fake' data
             fake = model.sample(real_A,noise_batch)
             # optimize for real data
@@ -177,7 +179,7 @@ def train_soft_intro_vae_toy():
                 param.requires_grad = True
 
             # generate fake
-            fake = model.sample(noise_batch)
+            fake = model.sample(real_A, noise_batch)
             rec = model.decoder(real_A,z.detach())
             # ELBO loss for real -- just the reconstruction, KLD for real doesn't affect the decoder
             loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
