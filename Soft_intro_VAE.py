@@ -32,12 +32,8 @@ def train_soft_intro_vae_toy():
     num_epochs = 150
     num_vae=0
     visualize_epoch=10
-
-
-    n_iter=90010
-    
-    save_interval=9000
-    test_iter=10000
+    test_iter=1000
+    save_interval=10
     seed=99
 
     recon_loss_type="mse"
@@ -102,7 +98,7 @@ def train_soft_intro_vae_toy():
 
     cur_iter = 0
 
-    for epoch in tqdm(range(start_epoch, num_epochs)):
+    for epoch in range(start_epoch, num_epochs):
         # save models
         if epoch % save_interval == 0 and epoch > 0:
             save_epoch = (epoch // save_interval) * save_interval
