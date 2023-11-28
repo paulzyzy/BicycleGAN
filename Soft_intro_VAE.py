@@ -31,9 +31,9 @@ def train_soft_intro_vae_toy():
     start_epoch = 0
     num_epochs = 150
     num_vae=0
-    visualize_epoch=10
+    visualize_epoch=5
     test_iter=1000
-    save_interval=10
+    save_interval=5
     seed=99
 
     recon_loss_type="mse"
@@ -97,6 +97,10 @@ def train_soft_intro_vae_toy():
     scale = 1 / (img_shape[0] * img_shape[1]* img_shape[2])  # normalizing factor, 's' in the paper
 
     cur_iter = 0
+    kls_real = []
+    kls_fake = []
+    kls_rec = []
+    rec_errs = []
 
     for epoch in range(start_epoch, num_epochs):
         # save models
