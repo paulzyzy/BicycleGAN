@@ -1,0 +1,1 @@
+python -m pytorch_fid './inference_results/bicyclegan_experiment_Gen_unet_128_WhereAdd_input_Discrim_basic_128/STL_10_real' './inference_results/bicyclegan_experiment_Gen_unet_128_WhereAdd_input_Discrim_basic_128/STL_10_fake' --device cuda:0
