@@ -62,6 +62,28 @@ def visualize_images(image, title, epoch, idx, save_path):
     plt.savefig(save_full_path)
     plt.close()  # Close the figure to avoid display
 
+
+def plot_distances(dist_list, save_path):
+    """
+    Plots the distances between the generated images.
+
+    Args:
+        dist_list (list): List of distances between the generated images.
+        title (str): Title of the plot.
+        save_path (str): Path to save the plot.
+    """
+    os.makedirs(save_path, exist_ok=True)
+    fig_path = os.path.join(save_path, "distances.png")
+
+    plt.figure(figsize=(16, 12))
+    plt.plot(np.arange(len(dist_list)), np.array(dist_list), 'o-')
+    plt.title("Distances between generated images")
+    plt.xlabel("Image number")
+    plt.ylabel("Distance")
+    plt.savefig(fig_path)
+    plt.close()  # Close the figure to avoid display
+
+
 def set_requires_grad(nets, requires_grad=False):
     """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
     Parameters:
