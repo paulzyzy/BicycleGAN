@@ -24,11 +24,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def inference(cfg):
     save_infer_path = os.path.join(
         cfg.paths.inference_dir, cfg.experiment_name)
-    
+    out_path = os.path.join(save_infer_path, 'inference')
+    subdirectories = ['FID_real', 'FID_fake']
     os.makedirs(save_infer_path, exist_ok=True)
-    os.makedirs(os.path.join(save_infer_path, 'STL_10_real'), exist_ok=True)
-    os.makedirs(os.path.join(save_infer_path, 'STL_10_fake'), exist_ok=True)
 
+    for subdirectory in subdirectories:
+        os.makedirs(os.path.join(save_infer_path, subdirectory), exist_ok=True)
+        
     model = instantiate(cfg.model.init)
 
     best_model_path = os.path.join(cfg.paths.checkpoints_dir,
@@ -48,7 +50,7 @@ def inference(cfg):
     dist_list = []
     for i, data in enumerate(val_loader):
         real_A, real_B = data
-        save_image(real_B.squeeze(), os.path.join(save_infer_path, 'STL_10_real/real') + str(i) + '.png', normalize=True)
+        save_image(real_B.squeeze(), os.path.join(save_infer_path, 'FID_real/real') + str(i) + '.png', normalize=True)
         real_A = Normalize(real_A).to(device)
 
         out_styles = []
@@ -64,17 +66,16 @@ def inference(cfg):
             with torch.no_grad():
                 fake_Bs = generator(real_A, noise)
                 fake = fake_Bs.squeeze()
-                save_image(fake, os.path.join(save_infer_path, 'STL_10_fake/fake') + str(i) + '.png', normalize=True)
-
                 out_styles.append(fake)
 
             # Denormalize and save the generated images
             visualize_inference(
                     Denormalize(fake.detach()).cpu(),
                     'inference', k, i,
-                    save_infer_path, title=f"style{k}_image{i}"
+                    out_path, title=f"style{k}_image{i}"
             )
-        
+        save_image(fake, os.path.join(save_infer_path, 'FID_fake/fake') + str(i) + '.png', normalize=True)
+
         # Compute the perceptual loss
         dist = 0
         for imgs_pair in itertools.combinations(range(len(out_styles)), 2):
