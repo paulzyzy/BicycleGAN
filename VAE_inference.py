@@ -22,7 +22,7 @@ def inference():
     seed=99
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
-    batch_size = 32
+    batch_size = 16
     lr_e=2e-4
     lr_d=2e-4
     latent_dim = 8        # latent dimension for the encoded images from domain B
@@ -32,7 +32,7 @@ def inference():
     norm='batch'
     nl='relu'
     use_dropout=False
-    where_add='input'
+    where_add='all'
     upsample='bilinear'
     num_generator_filters = 64
     output_nc=3	
@@ -51,7 +51,7 @@ def inference():
              use_dropout, init_type, init_gain, where_add, upsample).to(device)
 
     # Load the trained model weights
-    checkpoint_path = '/home/paulzy/BicycleGAN/saves/model_epoch_27000_iter_27000.pth'
+    checkpoint_path = '/home/paulzy/BicycleGAN/saves/model_epoch_90000_iter_90000.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
