@@ -31,9 +31,9 @@ def train_soft_intro_vae_toy():
     start_epoch = 0
     num_epochs = 150
     num_vae=0
-    visualize_epoch=5
+    visualize_epoch=3
     test_iter=1000
-    save_interval=5
+    save_interval=3
     seed=99
 
     recon_loss_type="mse"
@@ -47,7 +47,7 @@ def train_soft_intro_vae_toy():
     val_size = 8
     lr_e=2e-4
     lr_d=2e-4
-    latent_dim = 128        # latent dimension for the encoded images from domain B
+    latent_dim = 8        # latent dimension for the encoded images from domain B
     init_type='normal'
     init_gain=0.02
     netG='unet_128'
@@ -106,7 +106,7 @@ def train_soft_intro_vae_toy():
         # save models
         if epoch % save_interval == 0 and epoch > 0:
             save_epoch = (epoch // save_interval) * save_interval
-            prefix = dataset + "_soft_intro_vae" + "_betas_" + str(beta_kl) + "_" + str(beta_neg) + "_" + str(
+            prefix = "_soft_intro_vae" + "_betas_" + str(beta_kl) + "_" + str(beta_neg) + "_" + str(
                 beta_rec) + "_"
             save_checkpoint(model, save_epoch, cur_iter, prefix)
 

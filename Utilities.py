@@ -190,10 +190,22 @@ def loss_generator(G, real, z, D, criterion_GAN):
 
 # Helper function for intro_VAE
 def load_model(model, pretrained):
-    weights = torch.load(pretrained)
+    # weights = torch.load(pretrained)
+    # pretrained_dict = weights['model']
+    # model.load_state_dict(pretrained_dict)
+    # model_dict = model.state_dict()
+    weights = torch.load(pretrained, map_location='cuda' if torch.cuda.is_available() else 'cpu')
     pretrained_dict = weights['model']
-    model.load_state_dict(pretrained_dict)
+    
+    # Filter out unnecessary keys
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model.state_dict()}
+    
+    # Handle missing keys if necessary
     model_dict = model.state_dict()
+    model_dict.update(pretrained_dict)
+    
+    model.load_state_dict(model_dict)
+    return model
 
 
 def save_checkpoint(model, epoch, iteration, prefix=""):
