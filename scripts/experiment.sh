@@ -1,1 +1,1 @@
-python train.py +experiments=large_multi
+python train.py +experiments=inst_norm
