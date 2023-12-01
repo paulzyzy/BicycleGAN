@@ -29,7 +29,7 @@ def train_soft_intro_vae_toy():
     pretrained = False
     checkpoint_path = '/home/paulzy/BicycleGAN/saves/model_epoch_90000_iter_90000.pth'
     start_epoch = 0
-    num_epochs = 150
+    num_epochs = 90
     num_vae=0
     visualize_epoch=3
     test_iter=1000
@@ -242,11 +242,13 @@ def train_soft_intro_vae_toy():
             cur_iter += 1
 
         if epoch % visualize_epoch == 0:  # visualize every 10 epochs
-            fake_results = model.sample_with_noise(val_A, num_samples=val_size, device=device)
-            visualize_images(
-                Denormalize(fake_results.detach()).cpu(), 
-                'Val_fake', epoch, cur_iter, val_results_path
-            )
+            model.eval()
+            with torch.no_grad():
+                fake_results = model.sample_with_noise(val_A, num_samples=val_size, device=device)
+                visualize_images(
+                    Denormalize(fake_results.detach()).cpu(), 
+                    'Val_fake', epoch, cur_iter, val_results_path
+                )
             # visualize_images(
             #     Denormalize(real_B.detach()).cpu(), 
             #     'Real Images',epoch, cur_iter, val_results_path

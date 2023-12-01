@@ -7,6 +7,7 @@ from datasets import *
 from models import *
 from Utilities import *
 from torch.autograd import Variable
+import ipdb
 
 
 # Device configuration
@@ -57,9 +58,10 @@ def inference():
 
     model = SoftIntroVAESimple(latent_dim, img_shape,output_nc, num_generator_filters, netG, norm, nl,
              use_dropout, init_type, init_gain, where_add, upsample).to(device)
-
+    
     # Load the trained model weights
     checkpoint_path = '/home/paulzy/BicycleGAN/checkpoint_VAE_1/_soft_intro_vae_betas_1.0_256_1.0_model_epoch_72_iter_112176.pth'
+    ipdb.set_trace()
     model = load_model(model, checkpoint_path)
     # checkpoint = torch.load(checkpoint_path, map_location=device)
     # model.load_state_dict(checkpoint['model'])
