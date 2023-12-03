@@ -3,7 +3,6 @@ import warnings
 warnings.filterwarnings("ignore")
 import torch
 from torch import nn, optim
-from vis_tools import *
 from datasets import *
 from models import *
 from Utilities import *

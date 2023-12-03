@@ -29,6 +29,7 @@ def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir,ti
         image_num (int): The image number to include in the filename.
         save_dir (str): The directory to save the images.
     """
+    os.makedirs(save_dir, exist_ok=True)
     image_path = os.path.join(save_dir, f"{prefix}_style{style_num}_image{image_num}.png")
     # Convert the tensor to PIL image for saving
     image = denorm_tensor.permute(1, 2, 0).numpy()
