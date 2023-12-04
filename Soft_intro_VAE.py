@@ -37,9 +37,9 @@ def train_soft_intro_vae_toy():
     seed=99
 
     recon_loss_type="mse"
-    beta_kl= 0.5
-    beta_rec= 1.0
-    beta_neg= 2048
+    beta_kl= 1.0
+    beta_rec= 0.5
+    beta_neg= 512
 
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
@@ -47,7 +47,7 @@ def train_soft_intro_vae_toy():
     val_size = 10
     lr_e=2e-4
     lr_d=2e-4
-    latent_dim = 128        # latent dimension for the encoded images from domain B
+    latent_dim = 256        # latent dimension for the encoded images from domain B
     init_type='normal'
     init_gain=0.02
     netG='unet_128'
