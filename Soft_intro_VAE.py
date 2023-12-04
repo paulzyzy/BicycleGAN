@@ -27,27 +27,27 @@ print(device)
 
 def train_soft_intro_vae_toy():
     pretrained = False
-    checkpoint_path = '/home/paulzy/BicycleGAN/saves/model_epoch_90000_iter_90000.pth'
+    checkpoint_path = '/home/paulzy/BicycleGAN/saves/_soft_intro_vae_betas_1.0_256_1.0_model_epoch_6_iter_9348.pth'
     start_epoch = 0
     num_epochs = 90
     num_vae=0
-    visualize_epoch=3
+    visualize_epoch=2
     test_iter=1000
-    save_interval=3
+    save_interval=2
     seed=99
 
     recon_loss_type="mse"
-    beta_kl=1.0
-    beta_rec=1.0
-    beta_neg=256
+    beta_kl= 0.5
+    beta_rec= 1.0
+    beta_neg= 2048
 
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
     batch_size = 32
-    val_size = 8
+    val_size = 10
     lr_e=2e-4
     lr_d=2e-4
-    latent_dim = 8        # latent dimension for the encoded images from domain B
+    latent_dim = 128        # latent dimension for the encoded images from domain B
     init_type='normal'
     init_gain=0.02
     netG='unet_128'
@@ -154,7 +154,7 @@ def train_soft_intro_vae_toy():
                     param.requires_grad = False
                 # print(real_A.shape,noise_batch.shape)
                 # generate 'fake' data
-                fake = model.sample(real_A,noise_batch)
+                fake = model.decode(real_A,noise_batch)
                 # optimize for real data
                 real_mu, real_logvar = model.encode(real_B)
                 z = reparameterization(real_mu, real_logvar)
@@ -195,7 +195,7 @@ def train_soft_intro_vae_toy():
                     param.requires_grad = True
 
                 # generate fake
-                fake = model.sample(real_A, noise_batch)
+                fake = model.decode(real_A, noise_batch)
                 rec = model.decoder(real_A,z.detach())
                 # ELBO loss for real -- just the reconstruction, KLD for real doesn't affect the decoder
                 loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
@@ -270,13 +270,6 @@ def train_soft_intro_vae_toy():
 
 
 if __name__ == '__main__':
-    """
-        Recommended hyper-parameters:
-        - 8Gaussians: beta_kl: 0.3, beta_rec: 0.2, beta_neg: 0.9, z_dim: 2, batch_size: 512
-        - 2spirals: beta_kl: 0.5, beta_rec: 0.2, beta_neg: 1.0, z_dim: 2, batch_size: 512
-        - checkerboard: beta_kl: 0.1, beta_rec: 0.2, beta_neg: 0.2, z_dim: 2, batch_size: 512
-        - rings: beta_kl: 0.2, beta_rec: 0.2, beta_neg: 1.0, z_dim: 2, batch_size: 512
-    """
     # hyperparameters
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = train_soft_intro_vae_toy()

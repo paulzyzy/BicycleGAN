@@ -12,7 +12,7 @@ import ipdb
 
 # Device configuration
 cuda = torch.cuda.is_available()
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 def inference():
     start_epoch = 0
@@ -26,15 +26,14 @@ def inference():
     recon_loss_type="mse"
     beta_kl=1.0
     beta_rec=1.0
-    beta_neg=256
+    beta_neg=2048
 
     gamma_r=1e-8
     img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
     
-    val_size = 8
-    lr_e=2e-4
-    lr_d=2e-4
-    latent_dim = 8        # latent dimension for the encoded images from domain B
+    lr_e=1e-4
+    lr_d=1e-4
+    latent_dim = 16        # latent dimension for the encoded images from domain B
     init_type='normal'
     init_gain=0.02
     netG='unet_128'
@@ -47,7 +46,7 @@ def inference():
     output_nc=3	
 
     # --------------build models -------------------------
-    batch_size = 8
+    batch_size = 16
     save_infer_path = './VAE_inference'
     num_styles = 8
     val_img_dir = './edges2shoes/val/'
@@ -60,11 +59,11 @@ def inference():
              use_dropout, init_type, init_gain, where_add, upsample).to(device)
     
     # Load the trained model weights
-    checkpoint_path = '/home/paulzy/BicycleGAN/checkpoint_VAE_1/_soft_intro_vae_betas_1.0_256_1.0_model_epoch_72_iter_112176.pth'
-    ipdb.set_trace()
-    model = load_model(model, checkpoint_path)
-    # checkpoint = torch.load(checkpoint_path, map_location=device)
-    # model.load_state_dict(checkpoint['model'])
+    checkpoint_path = '/home/paulzy/BicycleGAN/saves/_soft_intro_vae_betas_1.0_2048_0.5_model_epoch_30_iter_46740.pth'
+    # ipdb.set_trace()
+    # model = load_model(model, checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint['model'])
 
     model.eval()
 
@@ -72,7 +71,7 @@ def inference():
         # Generate random noise
         # noise = torch.randn(size=(real_A.shape[0], latent_dim)).to(device)
         with torch.no_grad():
-            fake_results = model.sample_with_noise(val_A, num_samples=val_size, device=device)
+            fake_results = model.sample_with_noise(val_A, num_samples=batch_size, device=device)
             visualize_images(
                 Denormalize(fake_results.detach()).cpu(), 
                 'Val_fake', 0, k, save_infer_path
