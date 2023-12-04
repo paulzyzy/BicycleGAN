@@ -1,193 +1,192 @@
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
-from torch.utils import data
+import torch
 from torch import nn, optim
-from vis_tools import *
 from datasets import *
 from models import *
 from Utilities import *
-import argparse, os
-import itertools
-import torch
+import  os
+#import itertools
 import time
-import pdb
+#import pdb
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
-print(torch.__version__)
-print(torch.cuda.is_available())
-
-# Create a summary writer
-writer = SummaryWriter('runs/bicyclegan_experiment_1')
+from functools import partial
+import hydra
+from omegaconf import DictConfig, OmegaConf
+from hydra.utils import instantiate
 
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# Training Configurations 
-# (You may put your needed configuration here. Please feel free to add more or use argparse. )
-img_dir = '/home/zlz/BicycleGAN/datasets/edges2shoes/train/'
-checkpoints_dir = '/Users/zy/Desktop/bicyclegan/checkpoints'
-os.makedirs(checkpoints_dir, exist_ok=True)
 
-img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
-num_epochs =  10
-batch_size = 2
-lr_rate = 0.0002 	      # Adam optimizer learning rate
-betas = 0.5		  # Adam optimizer beta 1, beta 2
-lambda_pixel = 10       # Loss weights for pixel loss
-lambda_latent = 0.5      # Loss weights for latent regression 
-lambda_kl = 0.01          # Loss weights for kl divergence
-latent_dim = 8        # latent dimension for the encoded images from domain B
-ndf = 64 # number of discriminator filters
-# gpu_id = 
-init_type='normal'
-init_gain=0.02
-netG='unet_128'
-netD='basic_128'
-norm='batch'
-nl='relu'
-use_dropout=False
-where_add='input'
-upsample='bilinear'
-num_generator_filters = 64
-output_nc=3	
+@hydra.main(version_base=None,config_path="config", config_name="train")
+def train(cfg):
+	# Random seeds (optional)
+	torch.manual_seed(1); np.random.seed(1)
+	torch.backends.cudnn.deterministic = True
 
-# Normalize image tensor
-def Normalize(image):
-	return (image/255.0-0.5)*2.0
+	# save_results_path = os.path.join(os.path.join(cfg.paths.root_dir, "image_results"),cfg.experiment_name)
+	# os.makedirs(save_pth_path, exist_ok=True)
+	save_results_path = os.path.join(cfg.paths.root_dir, "image_results")
+	os.makedirs(save_results_path, exist_ok=True)
+	save_pth_path = os.path.join(cfg.paths.checkpoints_dir,cfg.experiment_name)
+	os.makedirs(save_pth_path, exist_ok=True)
 
-# Denormalize image tensor
-def Denormalize(tensor):
-	return ((tensor+1.0)/2.0)*255.0
+	#OmegaConf.resolve(cfg)
+	#print(OmegaConf.to_yaml(cfg))
+	model = instantiate(cfg.model.init)
+	writer = SummaryWriter(cfg.experiment_path)
+	# Create the dataset
+	train_dataset = instantiate(cfg.datas.datasets)
+	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.params.batch_size)
 
-# Reparameterization helper function 
-# (You may need this helper function here or inside models.py, depending on your encoder implementation)
+	generator = model.generator.to(device)
+	encoder = model.encoder.to(device)
+	D_VAE = model.D_VAE.to(device)
+	D_LR = model.D_LR.to(device)
+
+	optimizer_E = torch.optim.Adam(encoder.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
+	optimizer_G = torch.optim.Adam(generator.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
+	optimizer_D_VAE = torch.optim.Adam(D_VAE.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
+	optimizer_D_LR = torch.optim.Adam(D_LR.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
+
+	# For adversarial loss
+	Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
+
+	# For adversarial loss (optional to use)
+	#criterion_GAN = torch.nn.MSELoss(reduction='sum').to(device)
+	criterion_GAN = partial(compute_GANloss, loss_func=torch.nn.MSELoss().to(device))
+	criterion_pixel = torch.nn.L1Loss().to(device)
+	criterion_latent = torch.nn.L1Loss().to(device)
+	criterion_kl = compute_KLloss
+
+	#criterion_kl = torch.nn.KLDivLoss().to(device)
+
+	# Initialize a counter for the total number of iterations
+	global_step = 0
+
+	for e in range(cfg.params.num_epochs):
+		start = time.time()
+		for idx, data in enumerate(train_loader):
+			# Increment the global step counter
+			global_step += 1
+
+			########## Process Inputs ##########
+			edge_tensor, rgb_tensor = data
+			edge_tensor, rgb_tensor = Normalize(edge_tensor).to(device), Normalize(rgb_tensor).to(device)
+			real_A = edge_tensor;real_B = rgb_tensor
+
+			b_size = real_B.size(0)
+			noise = Variable(Tensor(np.random.normal(0, 1, (real_A.size(0), cfg.model.names.latent_dim))))
+
+			#-------------------------------
+			#  Train Generator and Encoder
+			#------------------------------
+			encoder.train(); generator.train()
+			set_requires_grad(D_VAE)
+			set_requires_grad(D_LR)
+			set_requires_grad(encoder, True)
+			set_requires_grad(generator, True)
+			optimizer_E.zero_grad(); optimizer_G.zero_grad()
+
+			mean, log_var = encoder(real_B)
+			z = reparameterization(mean, log_var)
+			# KL loss
+			# kl_loss = criterion_kl(z,noise)
+			kl_loss = criterion_kl(mean, log_var).to(device)
+
+			#generator loss for VAE-GAN
+			loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, criterion_GAN)
+
+			#generator loss for LR-GAN
+			loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, noise, D_LR, criterion_GAN)
 
 
-# Random seeds (optional)
-torch.manual_seed(1); np.random.seed(1)
+			#l1 loss between generated image and real image
+			l1_image = loss_image(real_B, fake_B_VAE, criterion_pixel)
 
-# Define DataLoader
-dataset = Edge2Shoe(img_dir)
-loader = data.DataLoader(dataset, batch_size=batch_size)
-print('The number of training images = %d' % len(dataset))
+			loss_GE = loss_VAE_GAN + loss_LR_GAN + cfg.params.lambda_pixel*l1_image + cfg.params.lambda_kl*kl_loss
 
-# Loss functions
-mae_loss = torch.nn.L1Loss().to(device)
+			loss_GE.backward(retain_graph=True)
+			# Update E
+			optimizer_E.step()
 
-# Define generator, encoder and discriminators
-generator = Generator(latent_dim, img_shape,output_nc, num_generator_filters, netG, norm, nl,
-             use_dropout, init_type, init_gain, where_add, upsample).to(device)
-encoder = Encoder(latent_dim).to(device)
-D_VAE = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1).to(device)
-D_LR = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1).to(device)
+			#latent loss between encoded z and noise
+			l1_latent = loss_latent(fake_B_LR, encoder, noise, criterion_latent)
 
-# Define optimizers for networks
-optimizer_E = torch.optim.Adam(encoder.parameters(), lr=lr_rate, betas=(betas,0.999))
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr_rate, betas=(betas,0.999))
-optimizer_D_VAE = torch.optim.Adam(D_VAE.parameters(), lr=lr_rate, betas=(betas,0.999))
-optimizer_D_LR = torch.optim.Adam(D_LR.parameters(), lr=lr_rate, betas=(betas,0.999))
+			loss_G = cfg.params.lambda_latent*l1_latent
 
-# For adversarial loss
-Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
+			loss_G.backward()
+			# Update G
+			optimizer_G.step()
+			
 
-# For adversarial loss (optional to use)
-valid = 1; fake = 0
+			#----------------------------------
+			#  Train Discriminator (cVAE-GAN)
+			#----------------------------------
+			set_requires_grad(D_VAE, True)
+			set_requires_grad(D_LR, True)
+			set_requires_grad(encoder)
+			set_requires_grad(generator)
+			D_VAE.train()
+			optimizer_D_VAE.zero_grad()
+			#loss for D_VAE
+			loss_D_VAE = loss_discriminator(D_VAE, fake_B_VAE, real_B, criterion_GAN)
+			loss_D_VAE.backward()
+			optimizer_D_VAE.step()
 
-criterion_GAN = torch.nn.MSELoss().to(device)
-criterion_pixel = torch.nn.L1Loss().to(device)
-criterion_latent = torch.nn.L1Loss().to(device)
-criterion_kl = torch.nn.KLDivLoss().to(device)
+			#---------------------------------
+			#  Train Discriminator (cLR-GAN)
+			#---------------------------------
+			D_LR.train()
+			optimizer_D_LR.zero_grad()
+			#loss for D_LR
+			loss_D_LR = loss_discriminator(D_LR, fake_B_LR, real_B, criterion_GAN)
+			loss_D_LR.backward()
+			optimizer_D_LR.step()
 
-# Initialize a counter for the total number of iterations
-global_step = 0
-# Training
-total_steps = len(loader)*num_epochs; step = 0
-for e in range(num_epochs):
-	start = time.time()
-	for idx, data in enumerate(loader):
-		loss_G = 0; loss_D_VAE = 0; loss_D_LR = 0
-		# Log losses to TensorBoard
-		writer.add_scalar('Loss/G', loss_G.item(), global_step=global_step)
-		writer.add_scalar('Loss/D_VAE', loss_D_VAE.item(), global_step=global_step)
-		writer.add_scalar('Loss/D_LR', loss_D_LR.item(), global_step=global_step)
+			# Log losses to TensorBoard
+			writer.add_scalar('Loss/G', loss_G.item(), global_step=global_step)
+			writer.add_scalar('Loss/D_VAE', loss_D_VAE.item(), global_step=global_step)
+			writer.add_scalar('Loss/D_LR', loss_D_LR.item(), global_step=global_step)
 
-        # Increment the global step counter
-		global_step += 1
+			""" Optional TODO: 
+				1. You may want to visualize results during training for debugging purpose
+				2. Save your model every few iterations
+			"""
+			if idx % 1000 == 0:  # visualize every 1000 batches
+				visualize_images(
+					Denormalize(fake_B_VAE.detach()).cpu(), 
+					'Comparison VAE', e, idx, save_results_path
+				)
+				visualize_images(
+					Denormalize(fake_B_LR.detach()).cpu(), 
+					'Comparison LR', e, idx, save_results_path
+				)
+				visualize_images(
+					Denormalize(real_B.detach()).cpu(), 
+					'Real Images',e, idx, save_results_path
+				)
+				visualize_images(
+					Denormalize(real_A.detach()).cpu(), 
+					'Edge Images',e, idx, save_results_path
+				)
 
-		########## Process Inputs ##########
-		edge_tensor, rgb_tensor = data
-		edge_tensor, rgb_tensor = norm(edge_tensor).to(device), norm(rgb_tensor).to(device)
-		real_A = edge_tensor;real_B = rgb_tensor
+			if idx % 500 == 0:  # save every 500 batches
+				torch.save(generator.state_dict(), os.path.join(save_pth_path, f'generator_epoch{e}_batch{idx}.pth'))
+				torch.save(encoder.state_dict(), os.path.join(save_pth_path, f'encoder_epoch{e}_batch{idx}.pth'))
+				torch.save(D_VAE.state_dict(), os.path.join(save_pth_path, f'D_VAE_epoch{e}_batch{idx}.pth'))
+				torch.save(D_LR.state_dict(), os.path.join(save_pth_path, f'D_LR_epoch{e}_batch{idx}.pth'))
+
+		print(f'Epoch [{e+1}/{cfg.params.num_epochs}], Step [{global_step}], Loss G: {loss_G.item()}, Loss D_VAE: {loss_D_VAE.item()}, Loss D_LR: {loss_D_LR.item()}')
 		
-		valid = Variable(Tensor(np.ones((real_A.size(0), *D_VAE.output_shape))), requires_grad=False)
-		fake = Variable(Tensor(np.zeros((real_A.size(0), *D_VAE.output_shape))), requires_grad=False)
-
-		b_size = real_B.size(0)
-		noise = torch.randn(b_size, latent_dim, 1, 1, device=device)
-
-		#-------------------------------
-		#  Train Generator and Encoder
-		#------------------------------
-		encoder.train(); generator.train()
-		optimizer_E.zero_grad(); optimizer_G.zero_grad()
-
-		mean, log_var = encoder(real_B)
-		z = reparameterization(mean, log_var)
-		# KL loss
-		kl_loss = criterion_kl(z,noise)
-
-		#generator loss for VAE-GAN
-		loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, valid, criterion_GAN)
-
-		#generator loss for LR-GAN
-		loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, z, D_LR, valid, criterion_GAN)
+	return 
 
 
-        #l1 loss between generated image and real image
-		l1_image = loss_image(real_A, real_B, z, generator, criterion_pixel)
+if __name__ == '__main__':
+	train()
 
-		#latent loss between encoded z and noise
-		l1_latent = loss_latent(noise, real_A, encoder, generator, criterion_latent)
 
-		loss_G = loss_VAE_GAN + loss_LR_GAN + lambda_pixel*l1_image + lambda_latent*l1_latent + lambda_kl*kl_loss
 
-		loss_G.backward()
-        # Update G
-		optimizer_G.step()
-		# Update E
-		optimizer_E.step()
-		#----------------------------------
-		#  Train Discriminator (cVAE-GAN)
-		#----------------------------------
-
-		D_VAE.train()
-		optimizer_D_VAE.zero_grad()
-		#loss for D_VAE
-		loss_D_VAE = loss_discriminator(D_VAE, real_B, generator, noise, valid, fake, criterion_GAN)
-		loss_D_VAE.backward()
-		optimizer_D_VAE.step()
-
-		#---------------------------------
-		#  Train Discriminator (cLR-GAN)
-		#---------------------------------
-		D_LR.train()
-		optimizer_D_LR.zero_grad()
-		#loss for D_LR
-		loss_D_LR = loss_discriminator(D_LR, real_B, generator, noise, valid, fake, criterion_GAN)
-		loss_D_LR.backward()
-		optimizer_D_LR.step()
-
-		""" Optional TODO: 
-			1. You may want to visualize results during training for debugging purpose
-			2. Save your model every few iterations
-		"""
-		if idx % 10 == 0:  # visualize every 10 batches
-			visualize_images(denorm(fake_B_VAE.detach()).cpu(), 'Generated Images VAE')
-			visualize_images(denorm(fake_B_LR.detach()).cpu(), 'Generated Images LR')
-			visualize_images(denorm(real_B.detach()).cpu(), 'Real Images')
-
-		if idx % 100 == 0:  # save every 100 batches
-			torch.save(generator.state_dict(), os.path.join(checkpoints_dir, f'generator_epoch{e}_batch{idx}.pth'))
-			torch.save(encoder.state_dict(), os.path.join(checkpoints_dir, f'encoder_epoch{e}_batch{idx}.pth'))
-			torch.save(D_VAE.state_dict(), os.path.join(checkpoints_dir, f'D_VAE_epoch{e}_batch{idx}.pth'))
-			torch.save(D_LR.state_dict(), os.path.join(checkpoints_dir, f'D_LR_epoch{e}_batch{idx}.pth'))
+		

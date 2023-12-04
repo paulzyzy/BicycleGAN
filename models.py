@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import torch
-import pdb
+#import pdb
 from UNet import *
 from Utilities import *
 from Discriminator import *
@@ -12,7 +12,7 @@ print(torch.__version__)
 #        Encoder 
 ##############################
 class Encoder(nn.Module):
-    def __init__(self, latent_dim):
+    def __init__(self, channels, latent_dim):
         super(Encoder, self).__init__()
         """ The encoder used in both cVAE-GAN and cLR-GAN, which encode image B or B_hat to latent vector
             This encoder uses resnet-18 to extract features, and further encode them into a distribution
@@ -32,7 +32,9 @@ class Encoder(nn.Module):
         """
 
         # Extracts features at the last fully-connected
-        resnet18_model = resnet18(pretrained=True)      
+        resnet18_model = resnet18(pretrained=False)  
+        resnet18_model.conv1 = nn.Conv2d(channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    
         self.feature_extractor = nn.Sequential(*list(resnet18_model.children())[:-3])
         self.pooling = nn.AvgPool2d(kernel_size=8, stride=8, padding=0)
 
@@ -136,8 +138,54 @@ def Discriminator(img_shape, ndf, netD, norm='batch', nl='lrelu', init_type='xav
 
 #         return 
 
+class BicycleGAN(nn.Module):
+    def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
+             use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear',ndf=64, netD='basic_128'):
+        super(BicycleGAN, self).__init__()
 
+        self.generator = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
+             use_dropout, init_type, init_gain, where_add, upsample)
 
+        self.D_VAE = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1)
+
+        self.D_LR = Discriminator(img_shape, ndf, netD, norm, nl, init_type, init_gain, num_Ds=1)
+        
+        self.encoder = Encoder(3, latent_dim)
+
+# SoftIntroVAE model
+class SoftIntroVAESimple(nn.Module):
+    def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
+             use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear'):
+        super(SoftIntroVAESimple, self).__init__()
+        self.encoder = Encoder(latent_dim)
+        self.latent_dim = latent_dim
+        self.decoder = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
+             use_dropout, init_type, init_gain, where_add, upsample)
+
+    def forward(self, A, B, deterministic=False):
+        mu, logvar = self.encode(B)
+        if deterministic:
+            z = mu
+        else:
+            z = reparameterization(mu, logvar)
+        y = self.decode(A, z)
+        return mu, logvar, z, y
+
+    def sample(self, A, z):
+        y = self.decode(A, z)
+        return y
+
+    def sample_with_noise(self, A, num_samples=1, device=torch.device("cpu")):
+        z = torch.randn(num_samples, self.latent_dim).to(device)
+        return self.decode(A, z)
+
+    def encode(self, B):
+        mu, logvar = self.encoder(B)
+        return mu, logvar
+
+    def decode(self, A, z):
+        y = self.decoder(A, z)
+        return y
 
 
 

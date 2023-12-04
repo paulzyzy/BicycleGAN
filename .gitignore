@@ -1,0 +1,10 @@
+checkpoints/
+runs/
+edges2shoes
+outputs
+__pycache__
+inference_results
+*.zip
+*.png
+*.jpg
+saves/

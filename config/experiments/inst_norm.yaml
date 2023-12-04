@@ -1,0 +1,2 @@
+defaults:
+  - overide /model: BCGAN_small_input_instnorm

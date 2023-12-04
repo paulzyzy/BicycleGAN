@@ -1,0 +1,17 @@
+defaults:
+  - datas: edge2shoes_train
+  - model: defaults
+  - paths: defaults
+  - optimizers: adam
+
+experiment_name : bicyclegan_experiment_Gen_${model.names.netG_name}_WhereAdd_${model.names.where_add_type}_Discrim_${model.names.netD_name}
+experiment_path : runs/${experiment_name}
+type: train
+
+params:
+  lambda_pixel : 10       # Loss weights for pixel loss
+  lambda_latent : 0.5      # Loss weights for latent regression 
+  lambda_kl : 0.01          # Loss weights for kl divergence
+  batch_size : 8
+  num_epochs : 50
+
