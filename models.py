@@ -171,9 +171,9 @@ class SoftIntroVAESimple(nn.Module):
         y = self.decode(A, z)
         return mu, logvar, z, y
 
-    def sample(self, A, z):
-        y = self.decode(A, z)
-        return y
+    # def sample(self, A, z):
+    #     y = self.decode(A, z)
+    #     return y
 
     def sample_with_noise(self, A, num_samples=1, device=torch.device("cpu")):
         z = torch.randn(num_samples, self.latent_dim).to(device)
