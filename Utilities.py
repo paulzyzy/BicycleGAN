@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.nn import init
+from torch.autograd import Variable
+
 import functools
 import matplotlib.pyplot as plt
 import torchvision
@@ -62,6 +64,66 @@ def visualize_images(image, title, epoch, idx, save_path):
     save_full_path = os.path.join(save_path, file_name)
     plt.savefig(save_full_path)
     plt.close()  # Close the figure to avoid display
+
+
+
+'''
+    < var >
+    Convert tensor to Variable
+'''
+def var(tensor, requires_grad=True):
+    if torch.cuda.is_available():
+        dtype = torch.cuda.FloatTensor
+    else:
+        dtype = torch.FloatTensor
+
+    var = Variable(tensor.type(dtype), requires_grad=requires_grad)
+
+    return var
+
+'''
+    < make_img >
+    Generate images
+
+    * Parameters
+    dloader : Data loader for test data set
+    G : Generator
+    z : random_z(size = (N, img_num, z_dim))
+        N : test img number / img_num : Number of images that you want to generate with one test img / z_dim : 8
+    img_num : Number of images that you want to generate with one test img
+'''
+def make_img(dloader, G, z, img_num=5, img_size=128):
+    G.eval()
+    if torch.cuda.is_available():
+        dtype = torch.cuda.FloatTensor
+    else:
+        dtype = torch.FloatTensor
+
+    dloader = iter(dloader)
+    img, _ = next(dloader)
+
+    N = img.size(0)
+    img = Normalize(var(img.type(dtype)))
+
+    result_img = torch.FloatTensor(N * (img_num + 1), 3, img_size, img_size).type(dtype)
+
+    for i in range(N):
+        # original image to the leftmost
+        result_img[i * (img_num + 1)] = img[i]
+
+        # Insert generated images to the next of the original image
+        for j in range(img_num):
+            img_ = img[i].unsqueeze(dim=0)
+            z_ = z[i, j, :].unsqueeze(dim=0)
+
+            out_img = G(img_, z_)
+
+            result_img[i * (img_num + 1) + j + 1] = (Denormalize(out_img)/255.0)
+
+
+    # [-1, 1] -> [0, 1]
+    #result_img = result_img / 2 + 0.5
+    return result_img
 
 
 def plot_distances(dist_list, save_path):

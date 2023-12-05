@@ -1,5 +1,5 @@
 defaults:
-  - datas: edge2shoes_train
+  - datas: edge2shoes
   - model: defaults
   - paths: defaults
   - optimizers: adam
@@ -14,4 +14,6 @@ params:
   lambda_kl : 0.01          # Loss weights for kl divergence
   batch_size : 8
   num_epochs : 50
+  test_batch_size : 10
+  test_img_num : 5  # Number of images to test
 

@@ -23,7 +23,6 @@ torch.cuda.empty_cache()
 matplotlib.use('Agg')
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 
 def train_soft_intro_vae_toy():
     pretrained = False
@@ -158,7 +157,7 @@ def train_soft_intro_vae_toy():
                 # optimize for real data
                 real_mu, real_logvar = model.encode(real_B)
                 z = reparameterization(real_mu, real_logvar)
-                rec = model.decoder(real_A,z)  # reconstruction
+                rec = model.decode(real_A,z)  # reconstruction
                 loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
                 # KLD loss for the real data
                 lossE_real_kl = calc_kl(real_logvar, real_mu, reduce="mean")
@@ -196,7 +195,7 @@ def train_soft_intro_vae_toy():
 
                 # generate fake
                 fake = model.decode(real_A, noise_batch)
-                rec = model.decoder(real_A,z.detach())
+                rec = model.decode(real_A,z.detach())
                 # ELBO loss for real -- just the reconstruction, KLD for real doesn't affect the decoder
                 loss_rec = calc_reconstruction_loss(real_B, rec, loss_type=recon_loss_type, reduction="mean")
 

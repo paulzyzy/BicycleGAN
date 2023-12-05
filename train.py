@@ -28,7 +28,7 @@ def train(cfg):
 
 	# save_results_path = os.path.join(os.path.join(cfg.paths.root_dir, "image_results"),cfg.experiment_name)
 	# os.makedirs(save_pth_path, exist_ok=True)
-	save_results_path = os.path.join(cfg.paths.root_dir, "image_results")
+	save_results_path = os.path.join(cfg.paths.root_dir, "BCGAN_results")
 	os.makedirs(save_results_path, exist_ok=True)
 	save_pth_path = os.path.join(cfg.paths.checkpoints_dir,cfg.experiment_name)
 	os.makedirs(save_pth_path, exist_ok=True)
@@ -38,8 +38,13 @@ def train(cfg):
 	model = instantiate(cfg.model.init)
 	writer = SummaryWriter(cfg.experiment_path)
 	# Create the dataset
-	train_dataset = instantiate(cfg.datas.datasets)
-	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.params.batch_size)
+	train_dataset = instantiate(cfg.datas.train)
+	train_loader = torch.utils.data.DataLoader(
+		train_dataset, batch_size=cfg.params.batch_size)
+
+	val_dataset = instantiate(cfg.datas.val)
+	val_loader = torch.utils.data.DataLoader(
+		val_dataset, batch_size=cfg.params.test_batch_size, shuffle=False)
 
 	generator = model.generator.to(device)
 	encoder = model.encoder.to(device)
@@ -62,6 +67,10 @@ def train(cfg):
 	criterion_kl = compute_KLloss
 
 	#criterion_kl = torch.nn.KLDivLoss().to(device)
+	fixed_z = var(
+			torch.randn(cfg.params.test_batch_size,
+			cfg.params.test_img_num,
+			cfg.model.names.latent_dim)).to(device)
 
 	# Initialize a counter for the total number of iterations
 	global_step = 0
@@ -77,8 +86,13 @@ def train(cfg):
 			edge_tensor, rgb_tensor = Normalize(edge_tensor).to(device), Normalize(rgb_tensor).to(device)
 			real_A = edge_tensor;real_B = rgb_tensor
 
-			b_size = real_B.size(0)
-			noise = Variable(Tensor(np.random.normal(0, 1, (real_A.size(0), cfg.model.names.latent_dim))))
+			half_batch = real_A.size(0)//2
+			vae_real_A = real_A[:half_batch, ...]
+			vae_real_B = real_B[:half_batch, ...]
+			lr_real_A = real_A[half_batch:, ...]
+			lr_real_B = real_B[half_batch:, ...]
+
+			noise = Variable(Tensor(np.random.normal(0, 1, (half_batch, cfg.model.names.latent_dim))))
 
 			#-------------------------------
 			#  Train Generator and Encoder
@@ -90,21 +104,21 @@ def train(cfg):
 			set_requires_grad(generator, True)
 			optimizer_E.zero_grad(); optimizer_G.zero_grad()
 
-			mean, log_var = encoder(real_B)
-			z = reparameterization(mean, log_var)
+			mean, log_var = encoder(vae_real_B) # VAE encode
+			z_encoded = reparameterization(mean, log_var)
 			# KL loss
-			# kl_loss = criterion_kl(z,noise)
+			# kl_loss = criterion_kl(z_encoded,noise)
 			kl_loss = criterion_kl(mean, log_var).to(device)
 
 			#generator loss for VAE-GAN
-			loss_VAE_GAN, fake_B_VAE = loss_generator(generator, real_A, z, D_VAE, criterion_GAN)
+			loss_VAE_GAN, fake_B_VAE = loss_generator(generator, vae_real_A, z_encoded, D_VAE, criterion_GAN)
 
 			#generator loss for LR-GAN
-			loss_LR_GAN, fake_B_LR = loss_generator(generator, real_A, noise, D_LR, criterion_GAN)
+			loss_LR_GAN, fake_B_LR = loss_generator(generator, lr_real_A, noise, D_LR, criterion_GAN)
 
 
-			#l1 loss between generated image and real image
-			l1_image = loss_image(real_B, fake_B_VAE, criterion_pixel)
+			#l1 loss between generated image and real image (VAE-GAN)
+			l1_image = loss_image(vae_real_B, fake_B_VAE, criterion_pixel)
 
 			loss_GE = loss_VAE_GAN + loss_LR_GAN + cfg.params.lambda_pixel*l1_image + cfg.params.lambda_kl*kl_loss
 
@@ -132,7 +146,7 @@ def train(cfg):
 			D_VAE.train()
 			optimizer_D_VAE.zero_grad()
 			#loss for D_VAE
-			loss_D_VAE = loss_discriminator(D_VAE, fake_B_VAE, real_B, criterion_GAN)
+			loss_D_VAE = loss_discriminator(D_VAE, fake_B_VAE, vae_real_B, criterion_GAN)
 			loss_D_VAE.backward()
 			optimizer_D_VAE.step()
 
@@ -142,7 +156,7 @@ def train(cfg):
 			D_LR.train()
 			optimizer_D_LR.zero_grad()
 			#loss for D_LR
-			loss_D_LR = loss_discriminator(D_LR, fake_B_LR, real_B, criterion_GAN)
+			loss_D_LR = loss_discriminator(D_LR, fake_B_LR, lr_real_B, criterion_GAN)
 			loss_D_LR.backward()
 			optimizer_D_LR.step()
 
@@ -156,22 +170,19 @@ def train(cfg):
 				2. Save your model every few iterations
 			"""
 			if idx % 1000 == 0:  # visualize every 1000 batches
-				visualize_images(
-					Denormalize(fake_B_VAE.detach()).cpu(), 
-					'Comparison VAE', e, idx, save_results_path
-				)
-				visualize_images(
-					Denormalize(fake_B_LR.detach()).cpu(), 
-					'Comparison LR', e, idx, save_results_path
-				)
-				visualize_images(
-					Denormalize(real_B.detach()).cpu(), 
-					'Real Images',e, idx, save_results_path
-				)
-				visualize_images(
-					Denormalize(real_A.detach()).cpu(), 
-					'Edge Images',e, idx, save_results_path
-				)
+				os.makedirs(save_results_path, exist_ok=True)
+				result_img = make_img(
+									val_loader, generator, fixed_z, 
+									cfg.params.test_img_num, vae_real_A.size(2))
+				
+				save_img_path = os.path.join(
+									save_results_path, 
+									f'gen_epoch{e}_batch{idx}.png')
+				
+				torchvision.utils.save_image(
+									result_img, save_img_path, 
+									nrow=cfg.params.test_img_num + 1)
+
 
 			if idx % 500 == 0:  # save every 500 batches
 				torch.save(generator.state_dict(), os.path.join(save_pth_path, f'generator_epoch{e}_batch{idx}.pth'))

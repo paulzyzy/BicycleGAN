@@ -40,7 +40,7 @@ def inference(cfg):
     generator = model.generator.to(device)
     generator.load_state_dict(torch.load(best_model_path, map_location=device))
     generator.eval()
-    val_dataset = instantiate(cfg.datas.datasets)
+    val_dataset = instantiate(cfg.datas.val)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=cfg.params.batch_size, shuffle=False)
 

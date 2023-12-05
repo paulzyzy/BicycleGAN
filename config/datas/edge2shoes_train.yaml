@@ -1,5 +1,0 @@
-name: edges2shoes
-
-datasets:
-  _target_ : datasets.Edge2Shoe
-  img_dir : ${paths.data_dir}/train/

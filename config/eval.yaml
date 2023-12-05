@@ -1,5 +1,5 @@
 defaults:
-  - datas: edge2shoes_val
+  - datas: edge2shoes
   - model: defaults
   - paths: defaults
   - metrics: defaults
