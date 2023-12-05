@@ -4,10 +4,13 @@ defaults:
   - paths: defaults
   - metrics: defaults
 
-experiment_name : SIVAE_experiment_Gen_${model.names.netG_name}_WhereAdd_${model.names.where_add_type}_Discrim_${model.names.netD_name}
+experiment_name : SIVAE_experiment_kl_${params.beta_kl}_rec_${params.beta_rec}_neg_${params.beta_neg}_zdim_${model.names.latent_dim}
 experiment_path : runs/${experiment_name}
-
+type : vae
 params:
+  beta_kl : 1.0       # Loss weights for pixel loss
+  beta_rec : 1.0      # Loss weights for latent regression 
+  beta_neg : 2048         # Loss weights for kl divergence
   batch_size : 1
   num_epochs : 10
   num_styles: 10 # Number of styles to sample

@@ -33,10 +33,15 @@ def inference(cfg):
 
     best_model_path = os.path.join(cfg.paths.checkpoints_dir,
                                    cfg.experiment_name,
-                                   'generator_epoch5_batch0.pth')
+                                   'model_epoch_0_iter_0.pth')
 
-    generator = model.generator.to(device)
-    generator.load_state_dict(torch.load(best_model_path, map_location=device))
+    if cfg.type == "vae":
+        generator = model.decoder.to(device)
+        checkpoint = torch.load(best_model_path, map_location=device)
+        model.load_state_dict(checkpoint['model'])
+    else:
+        generator = model.generator.to(device)
+        generator.load_state_dict(torch.load(best_model_path, map_location=device))
     generator.eval()
     val_dataset = instantiate(cfg.datas.val)
     val_loader = torch.utils.data.DataLoader(

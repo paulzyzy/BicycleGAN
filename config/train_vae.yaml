@@ -7,7 +7,7 @@ defaults:
 
 experiment_name : SIVAE_experiment_kl_${params.beta_kl}_rec_${params.beta_rec}_neg_${params.beta_neg}_zdim_${model.names.latent_dim}
 experiment_path : runs/${experiment_name}
-type: train
+type: gan
 pretrained : False
 
 params:

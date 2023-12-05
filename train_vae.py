@@ -89,15 +89,12 @@ def train(cfg):
 
     for epoch in range(cfg.params.start_epoch, cfg.params.num_epochs):
         # save models
-        if epoch % cfg.params.save_interval == 0 and epoch > 0:
+        if epoch % cfg.params.save_interval == 0 or epoch > 0:
             save_epoch = (epoch // cfg.params.save_interval) * \
                         cfg.params.save_interval
-            prefix = "_soft_intro_vae" + "_betas_" + \
-                str(cfg.params.beta_kl) + \
-                "_" + str(cfg.params.beta_neg) + "_" + \
-                str(cfg.params.beta_rec) + "_"
             
-            save_checkpoint(model, save_epoch, cur_iter, prefix)
+            save_checkpoint(model, save_epoch, cur_iter, save_pth_path)
+            exit()
 
         model.train()
         batch_kls_real = []
