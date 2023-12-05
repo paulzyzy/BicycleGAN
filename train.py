@@ -52,11 +52,16 @@ def train(cfg):
 	D_VAE = model.D_VAE.to(device)
 	D_LR = model.D_LR.to(device)
 
-	optimizer_E = torch.optim.Adam(encoder.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
-	optimizer_G = torch.optim.Adam(generator.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
-	optimizer_D_VAE = torch.optim.Adam(D_VAE.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
-	optimizer_D_LR = torch.optim.Adam(D_LR.parameters(), lr=cfg.optimizers.lr, betas=cfg.optimizers.betas)
+	optimizer_E = instantiate(cfg.optimizers.encoder)(encoder.parameters())
+	optimizer_G = instantiate(cfg.optimizers.decoder)(generator.parameters())
+	optimizer_D_VAE = instantiate(cfg.optimizers.DVAE)(D_VAE.parameters())
+	optimizer_D_LR = instantiate(cfg.optimizers.DLR)(D_LR.parameters())
 
+	scheduler_E = instantiate(cfg.schedulers.encoder)(optimizer_E)
+	scheduler_G = instantiate(cfg.schedulers.decoder)(optimizer_G)
+	scheduler_D_VAE = instantiate(cfg.schedulers.DVAE)(optimizer_D_VAE)
+	scheduler_D_LR = instantiate(cfg.schedulers.DLR)(optimizer_D_LR)
+	
 	# For adversarial loss
 	Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
@@ -191,6 +196,14 @@ def train(cfg):
 				torch.save(D_LR.state_dict(), os.path.join(save_pth_path, f'D_LR_epoch{e}_batch{idx}.pth'))
 
 		print(f'Epoch [{e+1}/{cfg.params.num_epochs}], Step [{global_step}], Loss G: {loss_G.item()}, Loss D_VAE: {loss_D_VAE.item()}, Loss D_LR: {loss_D_LR.item()}')
+
+		scheduler_E.step()
+		scheduler_G.step()
+		scheduler_D_VAE.step()
+		scheduler_D_LR.step()
+
+	end = time.time()
+	print(f'Training time: {end-start}')
 		
 	return 
 
