@@ -18,7 +18,7 @@ import math
 # Device configuration
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-@hydra.main(version_base=None, config_path="config", config_name="eval")
+@hydra.main(version_base=None, config_path="config", config_name="eval_vae")
 def inference(cfg):
     save_infer_path = os.path.join(
         cfg.paths.inference_dir, cfg.experiment_name)
