@@ -1,1 +1,1 @@
-python train.py +experiments=inst_norm
+python train.py +experiment=small_input_inst_norm

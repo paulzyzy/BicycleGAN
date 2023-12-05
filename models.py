@@ -32,7 +32,7 @@ class Encoder(nn.Module):
         """
 
         # Extracts features at the last fully-connected
-        resnet18_model = resnet18(pretrained=False)  
+        resnet18_model = resnet18(pretrained=False) 
         resnet18_model.conv1 = nn.Conv2d(channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
     
         self.feature_extractor = nn.Sequential(*list(resnet18_model.children())[:-3])
@@ -119,24 +119,7 @@ def Discriminator(img_shape, ndf, netD, norm='batch', nl='lrelu', init_type='xav
         raise NotImplementedError('Discriminator model name [%s] is not recognized' % net)
     init_weights(net, init_type, init_gain)
     return net
-# class Discriminator(nn.Module):
-#     def __init__(self, in_channels=3):
-#         super(Discriminator, self).__init__()
-#         """ The discriminator used in both cVAE-GAN and cLR-GAN
-            
-#             Args in constructor: 
-#                 in_channels: number of channel in image (default: 3 for RGB)
 
-#             Args in forward function: 
-#                 x: image input (real_B, fake_B)
- 
-#             Returns: 
-#                 discriminator output: could be a single value or a matrix depending on the type of GAN
-#         """
-
-#     def forward(self, x):
-
-#         return 
 
 class BicycleGAN(nn.Module):
     def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
@@ -157,7 +140,7 @@ class SoftIntroVAESimple(nn.Module):
     def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
              use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear'):
         super(SoftIntroVAESimple, self).__init__()
-        self.encoder = Encoder(latent_dim)
+        self.encoder = Encoder(3, latent_dim)
         self.latent_dim = latent_dim
         self.decoder = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
              use_dropout, init_type, init_gain, where_add, upsample)

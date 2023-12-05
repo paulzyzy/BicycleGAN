@@ -2,7 +2,7 @@ defaults:
   - datas: edge2shoes
   - model: defaults
   - paths: defaults
-  - optimizers: adam
+  - optimizers: defaults_BCGAN
 
 experiment_name : bicyclegan_experiment_Gen_${model.names.netG_name}_WhereAdd_${model.names.where_add_type}_Discrim_${model.names.netD_name}
 experiment_path : runs/${experiment_name}

@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import torch
 from torch import nn, optim
+import torchvision
 from datasets import *
 from models import *
 from Utilities import *
@@ -170,7 +171,6 @@ def train(cfg):
 				2. Save your model every few iterations
 			"""
 			if idx % 1000 == 0:  # visualize every 1000 batches
-				os.makedirs(save_results_path, exist_ok=True)
 				result_img = make_img(
 									val_loader, generator, fixed_z, 
 									cfg.params.test_img_num, vae_real_A.size(2))

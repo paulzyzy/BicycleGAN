@@ -1,21 +1,19 @@
 names: 
-  netG_name: "unet_256"
-  netD_name: "basic_256_multi"
-  where_add_type: "all"
-  latent_dim: 8
+  netG_name: "unet_128"
+  netD_name: "basic_128"
+  where_add_type: "input"
+  latent_dim: 256
 
 init:
-  _target_: models.BicycleGAN
+  _target_: models.SoftIntroVAESimple
   latent_dim: ${model.names.latent_dim}
   img_shape: [3, 128, 128]
   netG: ${model.names.netG_name}
-  netD: ${model.names.netD_name}
   use_dropout: False
   init_type: "normal"
   ngf: 64
-  ndf: 64
   init_gain: 0.02
-  norm: "batch"
+  norm: "instance"
   nl: 'relu'
   upsample: 'bilinear'
   where_add: ${model.names.where_add_type}
