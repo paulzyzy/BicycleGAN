@@ -41,11 +41,13 @@ def train(cfg):
 	# Create the dataset
 	train_dataset = instantiate(cfg.datas.train)
 	train_loader = torch.utils.data.DataLoader(
-		train_dataset, batch_size=cfg.params.batch_size)
+		train_dataset, batch_size=cfg.params.batch_size, 
+		drop_last=True, shuffle=True)
 
 	val_dataset = instantiate(cfg.datas.val)
 	val_loader = torch.utils.data.DataLoader(
-		val_dataset, batch_size=cfg.params.test_batch_size, shuffle=False)
+		val_dataset, batch_size=cfg.params.test_batch_size,
+		drop_last=True, shuffle=False)
 
 	generator = model.generator.to(device)
 	encoder = model.encoder.to(device)

@@ -93,9 +93,9 @@ def train(cfg):
             save_epoch = (epoch // cfg.params.save_interval) * \
                         cfg.params.save_interval
             prefix = "_soft_intro_vae" + "_betas_" + \
-                str(cfg.params.beta_rec_kl) + \
-                "_" + str(cfg.params.beta_rec_neg) + "_" + \
-                str(cfg.params.cfg.params.beta_rec) + "_"
+                str(cfg.params.beta_kl) + \
+                "_" + str(cfg.params.beta_neg) + "_" + \
+                str(cfg.params.beta_rec) + "_"
             
             save_checkpoint(model, save_epoch, cur_iter, prefix)
 
