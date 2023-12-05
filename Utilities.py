@@ -47,6 +47,7 @@ def visualize_inference(denorm_tensor, prefix, style_num, image_num, save_dir,ti
     plt.close()  # Close the figure to avoid display
 
 def visualize_images(image, title, epoch, idx, save_path):
+    os.makedirs(save_path, exist_ok=True)
     # Create a grid with 2 images per row for each pair of real and generated images
     grid_img = torchvision.utils.make_grid(image, nrow=2)
     # Convert to a numpy image
@@ -313,6 +314,7 @@ def load_model(model, pretrained):
 
 
 def save_checkpoint(model, epoch, iteration, prefix=""):
+    os.makedirs("./saves/", exist_ok=True)
     model_out_path = "./saves/" + prefix + "model_epoch_{}_iter_{}.pth".format(epoch, iteration)
     state = {"epoch": epoch, "model": model.state_dict()}
     if not os.path.exists("./saves/"):

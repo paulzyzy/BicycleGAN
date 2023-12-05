@@ -8,3 +8,4 @@ inference_results
 *.png
 *.jpg
 saves/
+vae_ckpt/
