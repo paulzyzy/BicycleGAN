@@ -9,3 +9,4 @@ inference_results
 *.jpg
 saves/
 vae_ckpt/
+config/paths/
