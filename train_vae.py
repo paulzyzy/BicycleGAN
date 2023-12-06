@@ -16,6 +16,7 @@ from hydra.utils import instantiate
 from datasets import *
 from Utilities import *
 from models import *
+from loss import *
 import torch
 torch.cuda.empty_cache()
 
@@ -37,7 +38,6 @@ def train(cfg):
     os.makedirs(save_results_path, exist_ok=True)
     save_pth_path = os.path.join(cfg.paths.checkpoints_dir,cfg.experiment_name)
     os.makedirs(save_pth_path, exist_ok=True)
-
     model = instantiate(cfg.model.init).to(device)
     writer = SummaryWriter(cfg.experiment_path)
     # Create the dataset
@@ -53,6 +53,9 @@ def train(cfg):
                 cfg.params.test_batch_size,
                 cfg.params.test_img_num,
                 cfg.model.names.latent_dim).to(device)
+    
+    if cfg.params.recon_loss_type == 'vgg':
+        vgg_loss = VGGLoss().to(device)
     
     if cfg.pretrained:
         # Load the trained model weights
@@ -111,10 +114,12 @@ def train(cfg):
                 # vanilla VAE training, optimizeing the ELBO for both encoder and decoder
                 # =========== Update E, D ================
                 real_mu, real_logvar, z, rec = model(real_A ,real_B)
-
-                loss_rec = calc_reconstruction_loss(
-                    real_B, rec, loss_type=cfg.params.cfg.params.recon_loss_type,
-                    reduction="mean")
+                if cfg.params.recon_loss_type != "vgg":
+                    loss_rec = calc_reconstruction_loss(
+                        real_B, rec, loss_type=cfg.params.recon_loss_type,
+                        reduction="mean")
+                else:
+                    loss_rec = vgg_loss(real_B, rec)
                 
                 loss_kl = calc_kl(real_logvar, real_mu, reduce="mean")
                 loss = cfg.params.cfg.params.beta_rec * loss_rec + \
@@ -151,9 +156,12 @@ def train(cfg):
                 real_mu, real_logvar = model.encode(real_B)
                 z = reparameterization(real_mu, real_logvar)
                 rec = model.decode(real_A,z)  # reconstruction
-                loss_rec = calc_reconstruction_loss(
-                    real_B, rec, loss_type=cfg.params.recon_loss_type,
-                    reduction="mean")
+                if cfg.params.recon_loss_type != "vgg":
+                    loss_rec = calc_reconstruction_loss(
+                        real_B, rec, loss_type=cfg.params.recon_loss_type,
+                        reduction="mean")
+                else:
+                    loss_rec = vgg_loss(real_B, rec)
                 # KLD loss for the real data
                 lossE_real_kl = calc_kl(real_logvar, real_mu, reduce="mean")
 
@@ -167,14 +175,18 @@ def train(cfg):
                 rec_kl_e = calc_kl(rec_logvar, rec_mu, reduce="none")
 
                 # reconstruction loss for the fake data
-                loss_fake_rec = calc_reconstruction_loss(
-                                    fake, rec_fake,
-                                    loss_type=cfg.params.recon_loss_type,
-                                    reduction="none")
-                loss_rec_rec = calc_reconstruction_loss(
-                                    rec, rec_rec,
-                                    loss_type=cfg.params.recon_loss_type,
-                                    reduction="none")
+                if cfg.params.recon_loss_type != "vgg":
+                    loss_fake_rec = calc_reconstruction_loss(
+                                        fake, rec_fake,
+                                        loss_type=cfg.params.recon_loss_type,
+                                        reduction="none")
+                    loss_rec_rec = calc_reconstruction_loss(
+                                        rec, rec_rec,
+                                        loss_type=cfg.params.recon_loss_type,
+                                        reduction="none")
+                else:
+                    loss_fake_rec = vgg_loss(fake, rec_fake)
+                    loss_rec_rec = vgg_loss(rec, rec_rec)
 
                 # expELBO
                 exp_elbo_fake = (
@@ -206,9 +218,12 @@ def train(cfg):
                 fake = model.decode(real_A, noise_batch)
                 rec = model.decode(real_A,z.detach())
                 # ELBO loss for real -- just the reconstruction, KLD for real doesn't affect the decoder
-                loss_rec = calc_reconstruction_loss(
-                    real_B, rec, loss_type=cfg.params.recon_loss_type,
-                    reduction="mean")
+                if cfg.params.recon_loss_type != "vgg":
+                    loss_rec = calc_reconstruction_loss(
+                        real_B, rec, loss_type=cfg.params.recon_loss_type,
+                        reduction="mean")
+                else:
+                    loss_rec = vgg_loss(real_B, rec)
 
                 # prepare fake data for ELBO
                 rec_mu, rec_logvar = model.encode(rec)
@@ -219,16 +234,19 @@ def train(cfg):
 
                 rec_rec = model.decode(real_A,z_rec.detach())
                 rec_fake = model.decode(real_A,z_fake.detach())
-
-                loss_rec_rec = calc_reconstruction_loss(
-                    rec.detach(), rec_rec, 
-                    loss_type=cfg.params.recon_loss_type, 
-                    reduction="mean")
-                
-                loss_rec_fake = calc_reconstruction_loss(
-                    fake.detach(), rec_fake, 
-                    loss_type=cfg.params.recon_loss_type,
-                    reduction="mean")
+                if cfg.params.recon_loss_type != "vgg":
+                    loss_rec_rec = calc_reconstruction_loss(
+                        rec.detach(), rec_rec, 
+                        loss_type=cfg.params.recon_loss_type, 
+                        reduction="mean")
+                    
+                    loss_rec_fake = calc_reconstruction_loss(
+                        fake.detach(), rec_fake, 
+                        loss_type=cfg.params.recon_loss_type,
+                        reduction="mean")
+                else:
+                    loss_rec_rec = vgg_loss(rec.detach(), rec_rec)
+                    loss_rec_fake = vgg_loss(fake.detach(), rec_fake)
 
                 fake_kl = calc_kl(fake_logvar, fake_mu, reduce="mean")
                 rec_kl = calc_kl(rec_logvar, rec_mu, reduce="mean")

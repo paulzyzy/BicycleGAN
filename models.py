@@ -1,4 +1,5 @@
 from torchvision.models import resnet18
+
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
@@ -120,7 +121,10 @@ def Discriminator(img_shape, ndf, netD, norm='batch', nl='lrelu', init_type='xav
     init_weights(net, init_type, init_gain)
     return net
 
+##############################
 
+
+##############################
 class BicycleGAN(nn.Module):
     def __init__(self, latent_dim, img_shape,output_nc, ngf, netG='unet_128', norm='batch', nl='relu',
              use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear',ndf=64, netD='basic_128'):
@@ -170,8 +174,4 @@ class SoftIntroVAESimple(nn.Module):
     def decode(self, A, z):
         y = self.decoder(A, z)
         return y
-
-
-
-
 

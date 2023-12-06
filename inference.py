@@ -18,7 +18,7 @@ import math
 # Device configuration
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-@hydra.main(version_base=None, config_path="config", config_name="eval")
+@hydra.main(version_base=None, config_path="config", config_name="eval_vae")
 def inference(cfg):
     save_infer_path = os.path.join(
         cfg.paths.inference_dir, cfg.experiment_name)
@@ -33,7 +33,7 @@ def inference(cfg):
 
     best_model_path = os.path.join(cfg.paths.checkpoints_dir,
                                    cfg.experiment_name,
-                                   'generator_epoch19_batch6000.pth')
+                                   'model_epoch_24_iter_37392.pth')
 
     if cfg.type == "vae":
         generator = model.decoder.to(device)
