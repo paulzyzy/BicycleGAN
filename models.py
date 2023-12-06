@@ -126,6 +126,7 @@ class BicycleGAN(nn.Module):
              use_dropout=False, init_type='xavier', init_gain=0.02, where_add='input', upsample='bilinear',ndf=64, netD='basic_128'):
         super(BicycleGAN, self).__init__()
 
+
         self.generator = Generator(latent_dim, img_shape,output_nc, ngf, netG, norm, nl,
              use_dropout, init_type, init_gain, where_add, upsample)
 
