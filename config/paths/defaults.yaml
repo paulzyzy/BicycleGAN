@@ -1,5 +1,5 @@
 # path to data directory
-root_dir: /home/eddieshen/CIS680/final/BicycleGAN
+root_dir: /home/eddie880509/src/BicycleGAN
 data_dir: ${paths.root_dir}/${datas.name}
 checkpoints_dir: ${paths.root_dir}/checkpoints
 # for inference

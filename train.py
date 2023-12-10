@@ -7,6 +7,7 @@ import torchvision
 from datasets import *
 from models import *
 from Utilities import *
+from loss import *
 import  os
 #import itertools
 import time
@@ -71,7 +72,10 @@ def train(cfg):
 	#criterion_GAN = torch.nn.MSELoss(reduction='sum').to(device)
 	criterion_GAN = partial(compute_GANloss, loss_func=torch.nn.MSELoss().to(device))
 	criterion_pixel = torch.nn.L1Loss().to(device)
-	criterion_latent = torch.nn.L1Loss().to(device)
+	if cfg.params.recon_loss_type == 'vgg':
+		criterion_latent = VGGLoss()
+	else:
+		criterion_latent = torch.nn.L1Loss().to(device)
 	criterion_kl = compute_KLloss
 
 	#criterion_kl = torch.nn.KLDivLoss().to(device)

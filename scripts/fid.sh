@@ -1,1 +1,1 @@
-python -m pytorch_fid './inference_results/bicyclegan_experiment_Gen_unet_128_WhereAdd_input_Discrim_basic_128/FID_real' './inference_results/bicyclegan_experiment_Gen_unet_128_WhereAdd_input_Discrim_basic_128/FID_fake' --device cuda:0
+python -m pytorch_fid './inference_results/SIVAE_experiment_kl_1.0_rec_0.5_neg_2048_zdim_256/FID_real' './inference_results/SIVAE_experiment_kl_1.0_rec_0.5_neg_2048_zdim_256/FID_fake' --device cuda:0

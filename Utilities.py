@@ -2,15 +2,14 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 from torch.autograd import Variable
-
 import functools
 import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
 import os
-# import torchvision.transforms.functional as F
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from loss import VGGLoss
 
 # Normalize image tensor
 def Normalize(image):
@@ -192,6 +191,7 @@ def init_weights(net, init_type='normal', init_gain=0.02):
     print('initialize network with %s' % init_type)
     net.apply(init_func)  # apply the initialization function <init_func>
 
+
 def get_norm_layer(norm_type='instance'):
     """Return a normalization layer
     Parameters:
@@ -283,15 +283,6 @@ def loss_generator(G, real, z, D, criterion_GAN):
 
     return loss_G, fake
 
-def compute_GANloss(outs, gt, loss_func):
-    """Computes the MSE between model output and scalar gt"""
-    loss = sum([loss_func(out, gt) for out in outs])
-    return loss
-
-def compute_KLloss(mu, logvar):
-    """Computes the KL loss"""
-    loss = 0.5 * torch.sum(torch.exp(logvar) + mu ** 2 - logvar - 1)
-    return loss
 
 # Helper function for intro_VAE
 def load_model(model, pretrained):
@@ -365,54 +356,7 @@ def plot_vae_density(model, ax, test_grid, n_pts, batch_size, colorbar=False, be
         plt.colorbar(cmesh)
 
 
-def calc_reconstruction_loss(x, recon_x, loss_type='mse', reduction='sum'):
-    """
 
-    :param x: original inputs
-    :param recon_x:  reconstruction of the VAE's input
-    :param loss_type: "mse", "l1", "bce", "gaussian"
-    :param reduction: "sum", "mean", "none"
-    :return: recon_loss
-    """
-    recon_x = recon_x.view(x.size(0), -1)
-    x = x.view(x.size(0), -1)
-    if reduction not in ['sum', 'mean', 'none']:
-        raise NotImplementedError
-    if loss_type == 'mse':
-        recon_error = F.mse_loss(recon_x, x, reduction='none')
-        recon_error = recon_error.sum(1)
-        if reduction == 'sum':
-            recon_error = recon_error.sum()
-        elif reduction == 'mean':
-            recon_error = recon_error.mean()
-    elif loss_type == 'l1':
-        recon_error = F.l1_loss(recon_x, x, reduction=reduction)
-    elif loss_type == 'bce':
-        recon_error = F.binary_cross_entropy(recon_x, x, reduction=reduction)
-    else:
-        raise NotImplementedError
-    return recon_error
-
-
-def calc_kl(logvar, mu, mu_o=10, is_outlier=False, reduce='sum'):
-    """
-    Calculate kl-divergence
-    :param logvar: log-variance from the encoder
-    :param mu: mean from the encoder
-    :param mu_o: negative mean for outliers (hyper-parameter)
-    :param is_outlier: if True, calculates with mu_neg
-    :param reduce: type of reduce: 'sum', 'none'
-    :return: kld
-    """
-    if is_outlier:
-        kl = -0.5 * (1 + logvar - mu.pow(2) - logvar.exp() + 2 * mu * mu_o - mu_o.pow(2)).sum(1)
-    else:
-        kl = -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(1)
-    if reduce == 'sum':
-        kl = torch.sum(kl)
-    elif reduce == 'mean':
-        kl = torch.mean(kl)
-    return kl
 
 
 def plot_samples_density(dataset, model, scale, device):

@@ -17,4 +17,5 @@ params:
   num_epochs : 20
   test_batch_size : 10
   test_img_num : 5  # Number of images to test
+  recon_loss_type: "l1"
 
