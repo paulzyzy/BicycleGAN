@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
 import os
-# import torchvision.transforms.functional as F
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from loss import VGGLoss

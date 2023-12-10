@@ -72,7 +72,7 @@ def train(cfg):
 	#criterion_GAN = torch.nn.MSELoss(reduction='sum').to(device)
 	criterion_GAN = partial(compute_GANloss, loss_func=torch.nn.MSELoss().to(device))
 	criterion_pixel = torch.nn.L1Loss().to(device)
-	if cfg.params.loss_type == 'vgg':
+	if cfg.params.recon_loss_type == 'vgg':
 		criterion_latent = VGGLoss()
 	else:
 		criterion_latent = torch.nn.L1Loss().to(device)
