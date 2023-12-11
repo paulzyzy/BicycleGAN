@@ -1,6 +1,8 @@
 We have provide five scripts to run our code under our scripts/ directory. We also config all the best parameters in hydra, 
 so only require to run the scripts to train or inference unless you wish to train with different parameters 
-
+Requirement:
+    Please install dependency via requirements.txt and down load edge2shoes dataset and put in the workingspace dir.
+    
 BicycleGAN:
 
 Train:
