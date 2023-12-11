@@ -1,26 +1,28 @@
-In training process, check all the parameters at the beginning and make sure using the same parameters in the inference part. The results for Tensorboard will be stored
-in bicyclegan_experiment_1, the results during the training will be stored in image_results. In inference part, select generator version in the checkpoints and change the
-batch size to get different number of images. Change the num_styles can give you different number of styles for same image.
-dataset_name = "edges2shoes" 
-img_shape = (3, 128, 128) # Please use this image dimension faster training purpose
-num_epochs =  10
-batch_size = 8
-lr_rate = 0.0002 	      # Adam optimizer learning rate
-betas = 0.5		  # Adam optimizer beta 1, beta 2
-lambda_pixel = 10       # Loss weights for pixel loss
-lambda_latent = 0.5      # Loss weights for latent regression 
-lambda_kl = 0.01          # Loss weights for kl divergence
-latent_dim = 8        # latent dimension for the encoded images from domain B
-ndf = 64 # number of discriminator filters
-# gpu_id = 
-init_type='normal'
-init_gain=0.02
-netG='unet_128'
-netD='basic_128'
-norm='batch'
-nl='relu'
-use_dropout=False
-where_add='input'
-upsample='bilinear'
-num_generator_filters = 64
-output_nc=3	
+We have provide five scripts to run our code under our scripts/ directory. We also config all the best parameters in hydra, 
+so only require to run the scripts to train or inference unless you wish to train with different parameters 
+
+BicycleGAN:
+
+Train:
+    For training please run the experiment.sh to train the model, the output image will save under the auto create directory
+    BCGAN_results/ 
+Inference:
+    To run the inference, you first need to set the config_name="eval" in the hydra decorator and 
+    and then change the pth name you want to run in the variable of best_model_path, then please run the ex_infer.sh.
+    This would also calculate lpips score for each image and create directory for fid score. The results would stored 
+    under inference_results/ and name based on the experiment name
+
+Soft Intro VAE:
+
+Train:
+    For training please run the experiment_vae.sh to train the model, the output image will save under the auto create directory
+    VAE_val_results/ 
+Inference:
+    To run the inference, you first need to set the config_name="eval_vae" in the hydra decorator and 
+    and then change the pth name you want to run in the variable of best_model_path, then please run the ex_infer_vae.sh.
+    This would also calculate lpips score for each image and create directory for fid score. The results would stored 
+    under inference_results/ and name based on the experiment name
+
+FID:
+    To run fid.sh you will need to do inference to create corresponding directory, then specify the path of real and fake image
+    the inference process create in fid.sh and run it to obtained fid score

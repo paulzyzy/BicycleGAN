@@ -12,8 +12,8 @@ pretrained : False
 
 params:
   beta_kl : 1.0       # Loss weights for pixel loss
-  beta_rec : 1.5     # Loss weights for latent regression 
-  beta_neg : 1024        # Loss weights for kl divergence
+  beta_rec : 1.0     # Loss weights for latent regression 
+  beta_neg : 1536        # Loss weights for kl divergence
   gamma_r : 1e-8
   batch_size : 16
   start_epoch : 0
