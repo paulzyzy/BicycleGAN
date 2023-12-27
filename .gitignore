@@ -5,8 +5,7 @@ outputs
 __pycache__
 inference_results
 *.zip
-*.png
-*.jpg
+*.tar
 saves/
 vae_ckpt/
 config/paths/
