@@ -26,6 +26,7 @@ $ bash scripts/experiment.sh
 ``` 
 
 #### Soft-Intro VAE
+<img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/Soft-IntroVAE.png" alt="Soft-IntroVAE" height="450"/>
 
 For training please run the experiment_vae.sh to train the model, the output image will save under the auto create directory `VAE_val_results/`.
 
@@ -52,17 +53,18 @@ $ bash scripts/ex_infer_vae.sh
 ``` 
 This would also calculate lpips score for each image and create directory for fid score. The results would stored under `inference_results/` and name based on the experiment name
 
-### FID
-
-#TODO
+### FID and LPIPS scores
+<img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/Evaluation.png" alt="evalutaion scores" height="300"/>
 
 ### Results 
 
 #### BicycleGAN
 <img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/best_bcgan.png" alt="BCGAN" height="410"/>
 
-#TODO
+#### Soft-IntroVAE
+<img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/best_softvae.png" alt="Soft IntroVAE" height="410"/>
+
 ### References
 
 [BicycleGAN](https://github.com/junyanz/BicycleGAN)</br>
-#TODO
+[Soft-IntroVAE](https://github.com/taldatech/soft-intro-vae-pytorch)</br>
