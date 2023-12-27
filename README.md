@@ -53,6 +53,9 @@ $ bash scripts/ex_infer_vae.sh
 ``` 
 This would also calculate lpips score for each image and create directory for fid score. The results would stored under `inference_results/` and name based on the experiment name
 
+### Weights
+Download  weights</br>
+  [weights](https://drive.google.com/drive/folders/199O7jT4YqMZX6o3gAf1DmIq1F1u9yEAe?usp=drive_link)
 ### FID and LPIPS scores
 <img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/Evaluation.png" alt="evalutaion scores" height="300"/>
 
