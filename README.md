@@ -58,7 +58,7 @@ This would also calculate lpips score for each image and create directory for fi
 
 ### Results 
 
-<img src="https://github.com/eddie0509tw/Fast-3D-Human-Pose-Estimation/blob/main/results/best_bcgan.png" alt="BCGAN" />
+<img src="https://github.com/paulzyzy/BicycleGAN/results/best_bcgan.png" alt="BCGAN" />
 
 #TODO
 ### References
