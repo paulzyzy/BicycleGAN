@@ -58,7 +58,8 @@ This would also calculate lpips score for each image and create directory for fi
 
 ### Results 
 
-<img src="https://github.com/paulzyzy/BicycleGAN/results/best_bcgan.png" alt="BCGAN" />
+#### BicycleGAN
+<img src="https://github.com/paulzyzy/BicycleGAN/blob/main/results/best_bcgan.png" alt="BCGAN" height="410"/>
 
 #TODO
 ### References
